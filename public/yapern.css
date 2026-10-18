@@ -661,7 +661,8 @@ h1 span,
 .live-messages-feed {
   max-width: 800px;
 }
-.live-messages-feed > h2 {
+.live-messages-feed > h2,
+.live-messages-feed > h1 {
   font-size: 24px;
   line-height: 1.3;
   letter-spacing: -0.025em;
@@ -692,15 +693,36 @@ h1 span,
   border-bottom: 0;
   padding-bottom: 0;
 }
-#live-messages h3 {
+#live-messages .live-message-title {
+  margin-top: 4px;
   font-size: 16px;
   line-height: 1.5;
   font-weight: 600;
 }
 .live-message-meta {
-  margin-top: 4px;
   font-size: 12px;
   color: var(--muted);
+}
+.live-message-board {
+  color: var(--accent);
+}
+.live-message-board,
+.live-message-title a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.board-description:not(:empty) {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.board-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+.board-page main {
+  flex: 1;
 }
 .live-message-body {
   margin-top: 8px;

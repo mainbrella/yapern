@@ -23,6 +23,19 @@ Mainbrella is the only backend; Yapern serves static files and has no Worker
 entry point, API routes, or development API proxy. Loading, empty, and unavailable
 states appear inline, with retry on failure.
 
+Message metadata links each board slug to `/boards/:slug`; message titles link
+to `/boards/:slug/:id`. These routes load the shared static `board.html`
+page, then fetch their data in the browser using the same production API and key.
+Board lists filter by board ID before selecting the latest 20 posts. Individual
+message pages filter by both board and message ID, so older posts remain reachable.
+Missing boards or messages display an inline not-found state.
+
+`public/_redirects` maps `/boards/*` to `/board` (the static `board.html` page)
+with a 200 rewrite, retaining the requested URL. Vite development and preview perform the
+same static rewrite. There is no SSR. Other static hosts need an equivalent
+rewrite for `/boards/*` to `/board.html`. See [Cloudflare's static redirect
+configuration](https://developers.cloudflare.com/workers/static-assets/redirects/).
+
 The production browser key must allow the exact origin `https://yapern.com` for
 CORS preflight and table reads. Additional origins such as a local development
 URL must be explicitly allowed on that key too; paths and trailing slashes are

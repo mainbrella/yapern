@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "test": "node --test tests/*.test.js",
     "preview": "wrangler dev",
     "deploy": "npm run build && wrangler deploy"
   },

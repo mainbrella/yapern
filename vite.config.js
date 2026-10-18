@@ -1,10 +1,25 @@
 import { defineConfig } from "vite";
 import { fileURLToPath } from "node:url";
+import { handleMessagesRequest } from "./src/messages-api.js";
 
 export default defineConfig({
   base: "/",
   publicDir: "public",
   plugins: [
+    {
+      name: "live-messages",
+      configureServer(server) {
+        server.middlewares.use(async (request, response, next) => {
+          const url = new URL(request.url, "http://localhost");
+          if (url.pathname !== "/api/messages") return next();
+          const result = await handleMessagesRequest(
+            new Request(url, { method: request.method }),
+          );
+          response.writeHead(result.status, Object.fromEntries(result.headers));
+          response.end(await result.text());
+        });
+      },
+    },
     {
       name: "page-redirects",
       configureServer(server) {

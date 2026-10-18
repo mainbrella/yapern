@@ -22,6 +22,12 @@ demo login. The token lives in sessionStorage for the current tab, expires after
 one hour, and is sent with the public `apikey` on board requests. Passwords are
 sent only to BFF and never stored in the browser.
 
+Signed-in users see a **+ Create** dropdown on the homepage with **Create
+message** and **Create board**. The dialogs follow `../mb`: messages include a
+board selector, title, and body; boards include a name and optional description.
+Both submit directly to BFF with the current session, preserve input on errors,
+and open the created board or message after the API confirms the saved row.
+
 Before publishing the login page, apply Canopy backend migration
 `056_bff_email_accounts.sql` and deploy the updated BFF API. Credentials are
 private salted scrypt hashes, separate from the board's public `users` rows.

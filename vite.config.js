@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 function boardPageRoutes(server) {
@@ -29,6 +30,14 @@ export default defineConfig({
   base: "/",
   publicDir: "public",
   plugins: [
+    {
+      name: "shared-site-header",
+      transformIndexHtml(html) {
+        if (!html.includes("<!-- site-header -->")) return html;
+        const header = readFileSync(new URL("./src/site-header.html", import.meta.url), "utf8");
+        return html.replace("    <!-- site-header -->\n", header);
+      },
+    },
     {
       name: "board-page-routes",
       configureServer: boardPageRoutes,

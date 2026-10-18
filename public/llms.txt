@@ -1,2 +1,10 @@
-# foo
+# Yapern
 
+> An open source message board with sub-yaps and community moderators.
+
+- Homepage: https://yapern.com/
+- Source code: https://github.com/mainbrella/yapern
+- License: GNU General Public License v3.0 (GPL v3)
+- Backend: Mainbrella BFF, https://mainbrella.com/bff/
+
+The homepage includes an interactive preview with sample posts. Preview interactions are local to the page and do not connect to a live message board.

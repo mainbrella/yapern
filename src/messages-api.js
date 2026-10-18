@@ -1,4 +1,5 @@
 import { messageBoardConfig } from "./config.js";
+import { readStoredSession } from "./auth.js";
 
 // The browser calls Mainbrella directly. The public key must allow the site's
 // exact Origin; Mainbrella handles both CORS preflight and the table read.
@@ -9,8 +10,9 @@ async function readRows(table, params, fetcher) {
     apiOrigin,
   );
   url.search = new URLSearchParams(params).toString();
+  const session = readStoredSession();
   const response = await fetcher(url, {
-    headers: { apikey: publicKey },
+    headers: { apikey: publicKey, ...(session ? { authorization: `Bearer ${session.token}` } : {}) },
     mode: "cors",
     credentials: "omit",
     redirect: "error",

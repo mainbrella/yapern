@@ -13,12 +13,26 @@ The homepage keeps its interactive sample preview and adds a live **Latest
 messages** list below the feature strip. It shows the newest 20 messages from
 the same production Canopy project as `canopy/examples/message-board`.
 
+The homepage Login button opens `/login/`. One email/password form signs in or
+creates a real project account through BFF, using
+`/bff/data/<projectId>/auth/email`. Session checks and sign-out use
+`/bff/data/<projectId>/auth/session` (GET/DELETE). This uses the same `bff_us_`
+bearer sessions as `../mb`, rather than Mainbrella owner accounts or Alice/Bob
+demo login. The token lives in sessionStorage for the current tab, expires after
+one hour, and is sent with the public `apikey` on board requests. Passwords are
+sent only to BFF and never stored in the browser.
+
+Before publishing the login page, apply Canopy backend migration
+`056_bff_email_accounts.sql` and deploy the updated BFF API. Credentials are
+private salted scrypt hashes, separate from the board's public `users` rows.
+
 `canopy.json` supplies project ID `90da3093-84b6-4cd7-a39a-a8afc39403b8`.
 `src/config.js` contains the example's production API origin and public key.
 No owner API key is needed to build, preview, or serve messages.
 
 The deployed JavaScript calls `https://api.mainbrella.com/bff/data/<projectId>/tables/messages`
-directly, sending the public key in the `apikey` header and omitting cookies.
+directly, sending the public key in the `apikey` header, a BFF bearer token when
+signed in, and omitting cookies.
 Mainbrella is the only backend; Yapern serves static files and has no Worker
 entry point, API routes, or development API proxy. Loading, empty, and unavailable
 states appear inline, with retry on failure.

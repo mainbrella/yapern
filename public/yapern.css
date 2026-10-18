@@ -187,6 +187,58 @@ a {
   width: 18px;
   height: 18px;
 }
+.login-body {
+  min-height: 100svh;
+  background: #090d17;
+}
+.login-home {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.login-home:hover { color: var(--accent); }
+.login-main {
+  width: 100%;
+  max-width: 448px;
+  margin: 0 auto;
+  padding: 40px 24px;
+}
+.login-content h1 { font-size: 32px; line-height: 1.2; letter-spacing: -.025em; }
+.login-status { min-height: 24px; margin-top: 12px; color: var(--muted); }
+.login-error { margin-top: 12px; color: #ffb4ab; font-size: 14px; }
+.email-login-form { display: grid; gap: 8px; margin-top: 24px; }
+.email-login-form label { font-size: 14px; font-weight: 600; }
+.email-login-form label:not(:first-child) { margin-top: 8px; }
+.email-login-form input {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #111727;
+}
+.email-login-form p { color: var(--muted); font-size: 13px; }
+.email-login-submit { width: 100%; margin-top: 8px; }
+.login-content button:disabled { opacity: .65; cursor: wait; transform: none; }
+.login-signed-in { margin-top: 24px; }
+.login-identity { overflow-wrap: anywhere; }
+.login-signed-in .button { margin-top: 24px; width: 100%; }
+.login-sign-out {
+  display: block;
+  min-height: 44px;
+  margin-top: 12px;
+  padding: 8px 0;
+  color: var(--muted);
+  background: transparent;
+}
+.login-sign-out:hover { color: var(--accent); }
+.site-header > .button[data-login-link] { min-height: 44px; font-size: 14px; }
+@media (max-width: 650px) {
+  .login-main { padding-top: 24px; }
+}
 .hero {
   display: grid;
   grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);

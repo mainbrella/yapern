@@ -11,6 +11,20 @@ function boardPageRoutes(server) {
   });
 }
 
+function pageRedirects(server) {
+  server.middlewares.use((request, response, next) => {
+    const match = request.url?.match(/^\/(privacy|terms|download|login)(\?.*)?$/);
+    if (!match) {
+      next();
+      return;
+    }
+    response.writeHead(308, {
+      Location: `/${match[1]}/${match[2] ?? ""}`,
+    });
+    response.end();
+  });
+}
+
 export default defineConfig({
   base: "/",
   publicDir: "public",
@@ -22,19 +36,8 @@ export default defineConfig({
     },
     {
       name: "page-redirects",
-      configureServer(server) {
-        server.middlewares.use((request, response, next) => {
-          const match = request.url?.match(/^\/(privacy|terms|download)(\?.*)?$/);
-          if (!match) {
-            next();
-            return;
-          }
-          response.writeHead(308, {
-            Location: `/${match[1]}/${match[2] ?? ""}`,
-          });
-          response.end();
-        });
-      },
+      configureServer: pageRedirects,
+      configurePreviewServer: pageRedirects,
     },
   ],
   build: {
@@ -43,6 +46,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
+        login: fileURLToPath(new URL("./login/index.html", import.meta.url)),
         board: fileURLToPath(new URL("./board.html", import.meta.url)),
         download: fileURLToPath(new URL("./download/index.html", import.meta.url)),
         privacy: fileURLToPath(new URL("./privacy/index.html", import.meta.url)),

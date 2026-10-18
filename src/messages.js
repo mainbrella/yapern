@@ -1,4 +1,4 @@
-import { fetchMessages, fetchBoards, fetchBoardPage } from "./messages-api.js";
+import { fetchMessages, fetchBoards, fetchBoardPage, fetchMessageAuthors } from "./messages-api.js";
 import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
 import { mountBoardSidebars } from "./board-sidebars.js";
 
@@ -11,7 +11,7 @@ const description = document.querySelector("#board-description");
 const isBoardPage = document.body.classList.contains("board-page");
 const route = isBoardPage ? parseBoardRoute(window.location.pathname) : null;
 
-function messageRow(message, board) {
+function messageRow(message, board, authors) {
   const item = document.createElement("li");
   const article = document.createElement("article");
   const title = document.createElement(isBoardPage ? "h2" : "h3");
@@ -34,7 +34,7 @@ function messageRow(message, board) {
     meta.append(link, document.createTextNode(" · "));
   }
   const author = document.createElement("span");
-  author.textContent = message.user_id;
+  author.textContent = authors.get(message.user_id) ?? "Name unavailable";
   const date = document.createElement("time");
   date.dateTime = message.created_at;
   date.textContent = dateFormat.format(new Date(message.created_at));
@@ -72,8 +72,10 @@ async function loadMessages() {
     } else {
       [data, boards] = await Promise.all([fetchMessages(), fetchBoards()]);
     }
+    // Keep posts readable if profile lookups are temporarily unavailable.
+    const authors = await fetchMessageAuthors(data).catch(() => new Map());
     const byId = new Map(boards.map(board => [board.id, board]));
-    list.replaceChildren(...data.map(message => messageRow(message, byId.get(message.board_id))));
+    list.replaceChildren(...data.map(message => messageRow(message, byId.get(message.board_id), authors)));
     status.textContent = data.length ? "" : "No messages yet.";
   } catch {
     status.textContent = "Messages are unavailable right now. Please try again.";

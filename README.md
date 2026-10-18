@@ -28,6 +28,11 @@ updates only `name`, filtering by the authenticated user's ID. Names are trimmed
 and must contain 1–80 characters. Loading, retry, save confirmation, expired
 sessions, and sign-out appear inline. No schema migration is required.
 
+Message author labels on the homepage and board/message pages also read this
+`users.name` field, looking up each distinct author once per list load. Account
+name changes appear when the list reloads. Missing profiles show “Unknown user”;
+failed profile lookups show “Name unavailable” while keeping messages readable.
+
 The configured browser key must grant `users: ['select', 'update']`. The `users`
 table policy must allow selects and own-row updates with `id` as `ownerColumn`;
 insert and delete access are unnecessary. These permissions are configured for

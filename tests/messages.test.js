@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { fetchMessages, fetchBoards, fetchBoardPage } from "../src/messages-api.js";
+import { fetchMessages, fetchBoards, fetchBoardPage, fetchMessageAuthors } from "../src/messages-api.js";
 import { messageBoardConfig } from "../src/config.js";
 import { boardHref, messageHref, parseBoardRoute } from "../src/board-routes.js";
 
@@ -33,6 +33,45 @@ test("reads the production project's newest 20 messages directly using CORS", as
 });
 
 const board = { id: "general", slug: "general", name: "General", description: "General discussion." };
+
+test("message authors use current account names and look up each distinct ID only once", async () => {
+  const id = "c0e15e07-e744-4cf9-a2c8-e5fe7e9ee82e";
+  const messages = [message, { ...message, user_id: id }, { ...message, user_id: id }];
+  let calls = 0;
+  let currentName = "andrew";
+  const fetcher = async (url, options) => {
+    calls++;
+    assert.ok(url.pathname.endsWith("/tables/users"));
+    assert.equal(url.searchParams.get("select"), "id,name");
+    assert.equal(url.searchParams.get("limit"), "1");
+    assert.equal(options.headers.apikey, messageBoardConfig.publicKey);
+    assert.equal(options.credentials, "omit");
+    const userId = url.searchParams.get("id").slice(3);
+    assert.ok(["alice", id].includes(userId));
+    return Response.json({ data: [{ id: userId, name: userId === "alice" ? "Alice" : currentName }] });
+  };
+  const authors = await fetchMessageAuthors(messages, fetcher);
+  assert.equal(calls, 2);
+  assert.equal(authors.get("alice"), "Alice");
+  assert.equal(authors.get(id), "andrew");
+  currentName = "Updated account name";
+  assert.equal((await fetchMessageAuthors(messages, fetcher)).get(id), currentName);
+});
+
+test("missing author names use a neutral label and empty lists skip profile requests", async () => {
+  assert.deepEqual(await fetchMessageAuthors([], async () => assert.fail("Unexpected request")), new Map());
+  for (const data of [[], [{ id: "alice", name: "  " }]]) {
+    assert.equal((await fetchMessageAuthors([message], async () => Response.json({ data }))).get("alice"), "Unknown user");
+  }
+});
+
+test("author lookups reject failed requests and mismatched or malformed profiles", async () => {
+  for (const data of [[{ id: "bob", name: "Bob" }], [{ id: "alice", name: null }],
+    [{ id: "alice", name: "Alice" }, { id: "bob", name: "Bob" }]]) {
+    await assert.rejects(fetchMessageAuthors([message], async () => Response.json({ data })));
+  }
+  await assert.rejects(fetchMessageAuthors([message], async () => new Response(null, { status: 403 })));
+});
 
 test("board lookups paginate so messages can link to boards beyond the first 100", async () => {
   const boards = await fetchBoards(async url => {

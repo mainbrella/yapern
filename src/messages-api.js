@@ -55,6 +55,20 @@ export async function fetchMessages(fetcher = fetch, { boardId, messageId } = {}
   return messages;
 }
 
+export async function fetchMessageAuthors(messages, fetcher = fetch) {
+  const ids = [...new Set(messages.map(message => message.user_id))];
+  // BFF supports equality filters, so look up each distinct author once.
+  const authors = await Promise.all(ids.map(async id => {
+    const users = await readRows("users", { select: "id,name", id: `eq.${id}`, limit: "1" }, fetcher);
+    const user = users[0];
+    if (user && (user.id !== id || typeof user.name !== "string")) {
+      throw new Error("Invalid message author");
+    }
+    return [id, user?.name.trim() || "Unknown user"];
+  }));
+  return new Map(authors);
+}
+
 async function readBoards(params, fetcher) {
   const boards = await readRows("boards", {
     select: "id,slug,name,description", ...params,

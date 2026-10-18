@@ -1,5 +1,5 @@
 export function boardHref(slug) {
-  return `/boards/${encodeURIComponent(slug)}`;
+  return `/y/${encodeURIComponent(slug)}`;
 }
 
 export function messageHref(slug, id) {
@@ -7,7 +7,7 @@ export function messageHref(slug, id) {
 }
 
 export function parseBoardRoute(pathname) {
-  const match = /^\/boards\/([a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?)(?:\/([^/]+))?\/?$/.exec(pathname);
+  const match = /^\/y\/([a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?)(?:\/([^/]+))?\/?$/.exec(pathname);
   if (!match) return null;
   try {
     return { slug: match[1], messageId: match[2] === undefined ? undefined : decodeURIComponent(match[2]) };

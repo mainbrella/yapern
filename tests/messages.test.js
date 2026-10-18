@@ -92,11 +92,12 @@ test("rejects a mismatched board, message ID, or messages belonging to another b
 });
 
 test("links use root board routes and encode message IDs", () => {
-  assert.equal(boardHref("video-games"), "/boards/video-games");
-  assert.equal(messageHref("general", "older / post?"), "/boards/general/older%20%2F%20post%3F");
-  assert.deepEqual(parseBoardRoute("/boards/general/"), { slug: "general", messageId: undefined });
+  assert.equal(boardHref("video-games"), "/y/video-games");
+  assert.equal(messageHref("general", "older / post?"), "/y/general/older%20%2F%20post%3F");
+  assert.deepEqual(parseBoardRoute("/y/general"), { slug: "general", messageId: undefined });
+  assert.deepEqual(parseBoardRoute("/y/general/"), { slug: "general", messageId: undefined });
   assert.deepEqual(parseBoardRoute(messageHref("general", "older / post?")), { slug: "general", messageId: "older / post?" });
-  for (const path of ["/boards/", "/boards/-invalid", "/boards/general/id/extra", "/boards/general/%ZZ"]) {
+  for (const path of ["/y/", "/y/-invalid", "/y/general/id/extra", "/y/general/%ZZ"]) {
     assert.equal(parseBoardRoute(path), null);
   }
 });

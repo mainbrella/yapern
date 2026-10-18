@@ -4,6 +4,7 @@
 npm ci
 npm run dev       # Vite development server
 npm run build     # Build the site and message-list JavaScript into dist/
+npm test          # Check the read-only message endpoint and asset routing
 npm run preview   # Preview the built site with Wrangler
 npm run deploy    # Build, then deploy the assets and read-only API Worker
 ```

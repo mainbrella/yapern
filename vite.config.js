@@ -13,7 +13,7 @@ function boardPageRoutes(server) {
 
 function pageRedirects(server) {
   server.middlewares.use((request, response, next) => {
-    const match = request.url?.match(/^\/(privacy|terms|download|login)(\?.*)?$/);
+    const match = request.url?.match(/^\/(privacy|terms|download|login|account)(\?.*)?$/);
     if (!match) {
       next();
       return;
@@ -47,6 +47,7 @@ export default defineConfig({
       input: {
         main: fileURLToPath(new URL("./index.html", import.meta.url)),
         login: fileURLToPath(new URL("./login/index.html", import.meta.url)),
+        account: fileURLToPath(new URL("./account/index.html", import.meta.url)),
         board: fileURLToPath(new URL("./board.html", import.meta.url)),
         download: fileURLToPath(new URL("./download/index.html", import.meta.url)),
         privacy: fileURLToPath(new URL("./privacy/index.html", import.meta.url)),

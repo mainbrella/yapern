@@ -390,6 +390,10 @@ a {
   background: transparent;
 }
 .login-sign-out:hover { color: var(--accent); }
+.account-content h1 { font-size: 28px; }
+.account-content .login-status:empty { display: none; }
+.account-email { margin-top: 12px; color: var(--muted); font-size: 14px; }
+.account-login { margin-top: 16px; }
 .site-header > .button[data-login-link] { min-height: 44px; font-size: 14px; }
 @media (max-width: 650px) {
   .login-main { padding-top: 24px; }

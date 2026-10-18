@@ -22,6 +22,27 @@ demo login. The token lives in sessionStorage for the current tab, expires after
 one hour, and is sent with the public `apikey` on board requests. Passwords are
 sent only to BFF and never stored in the browser.
 
+When signed in, the header's **Account** button opens `/account/`. The account
+page reads the current user's `id,name` from the existing `users` table and
+updates only `name`, filtering by the authenticated user's ID. Names are trimmed
+and must contain 1–80 characters. Loading, retry, save confirmation, expired
+sessions, and sign-out appear inline. No schema migration is required.
+
+The configured browser key must grant `users: ['select', 'update']`. The `users`
+table policy must allow selects and own-row updates with `id` as `ownerColumn`;
+insert and delete access are unnecessary. These permissions are configured for
+the production key. For another deployment, with the owner's
+`MAINBRELLA_API_KEY` available, use
+`canopy --browser-keys` to find the configured key's ID, then add its
+`canopy --grant users select --key <KEY_ID>` and
+`canopy --grant users update --key <KEY_ID>` grants. The owner policy endpoint
+`PUT /bff/projects/90da3093-84b6-4cd7-a39a-a8afc39403b8/policies/users`
+accepts this policy:
+
+```json
+{ "select": "public", "insert": "none", "update": "own", "delete": "none", "ownerColumn": "id" }
+```
+
 Signed-in users see a **+ Create** dropdown on the homepage with **Create
 message** and **Create board**. The dialogs follow `../mb`: messages include a
 board selector, title, and body; boards include a name and optional description.

@@ -13,17 +13,33 @@
     <a class="skip-link" href="#main">Skip to content</a>
     <header class="site-header shell">
       <a class="brand" href="/" aria-label="Yapern home"><img src="/images/logo.png" alt="" width="36" height="36" />yapern<span class="brand-dot">.</span></a>
-      <nav aria-label="Main navigation"><a href="/#messages-title">All messages</a></nav>
     </header>
-    <main id="main" class="live-messages-section shell">
-      <div class="live-messages-feed">
+    <main id="main" class="live-messages-section detail-board-layout shell">
+      <aside class="detail-board-navigation" aria-label="Board navigation">
+        <nav aria-label="Message views">
+          <a class="detail-nav-link" href="/#messages-title">All messages</a>
+        </nav>
+        <details class="detail-board-menu" open>
+          <summary>Boards</summary>
+          <p id="boards-status" class="detail-sidebar-status" role="status">Loading boards…</p>
+          <ul id="board-navigation" aria-label="Boards" aria-busy="true"></ul>
+          <button id="boards-retry" class="messages-retry" type="button" hidden>Retry boards</button>
+        </details>
+      </aside>
+      <section class="live-messages-feed" aria-labelledby="messages-title">
         <h1 id="messages-title">Board</h1>
         <p id="board-description" class="board-description"></p>
         <p id="messages-status" class="messages-status" role="status"></p>
         <button id="messages-retry" class="messages-retry" type="button" hidden>Try again</button>
         <ul id="live-messages" aria-labelledby="messages-title" aria-busy="false"></ul>
         <noscript><p class="messages-status">Enable JavaScript to read messages.</p></noscript>
-      </div>
+      </section>
+      <aside class="detail-recent-posts" aria-labelledby="recent-title">
+        <h2 id="recent-title">Recent posts</h2>
+        <p id="recent-status" class="detail-sidebar-status" role="status">Loading posts…</p>
+        <ul id="recent-posts" aria-labelledby="recent-title" aria-busy="true"></ul>
+        <button id="recent-retry" class="messages-retry" type="button" hidden>Retry recent posts</button>
+      </aside>
     </main>
     <footer class="site-footer shell">
       <a class="brand footer-brand" href="/">yapern<span class="brand-dot">.</span></a>

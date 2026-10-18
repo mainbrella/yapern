@@ -30,6 +30,13 @@ Board lists filter by board ID before selecting the latest 20 posts. Individual
 message pages filter by both board and message ID, so older posts remain reachable.
 Missing boards or messages display an inline not-found state.
 
+Both detail views use the example's three-column layout: board navigation on
+the left, the current board or message in the middle, and five recent posts on
+the right. The active board is highlighted. Navigation and recent posts load
+independently from the main content, with separate retry controls on failure.
+On tablets the recent posts move below the content; on phones all columns stack
+and the board menu can be collapsed. The homepage layout stays unchanged.
+
 `public/_redirects` maps `/boards/*` to `/board` (the static `board.html` page)
 with a 200 rewrite, retaining the requested URL. Vite development and preview perform the
 same static rewrite. There is no SSR. Other static hosts need an equivalent

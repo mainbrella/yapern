@@ -1,5 +1,6 @@
 import { fetchMessages, fetchBoards, fetchBoardPage } from "./messages-api.js";
 import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
+import { mountBoardSidebars } from "./board-sidebars.js";
 
 const list = document.querySelector("#live-messages");
 const status = document.querySelector("#messages-status");
@@ -84,4 +85,5 @@ async function loadMessages() {
 
 retry.addEventListener("click", loadMessages);
 if (route) heading.textContent = `board/${route.slug}`;
+if (isBoardPage) mountBoardSidebars(route?.slug);
 loadMessages();

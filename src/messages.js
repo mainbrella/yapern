@@ -1,3 +1,5 @@
+import { fetchMessages } from "./messages-api.js";
+
 const list = document.querySelector("#live-messages");
 const status = document.querySelector("#messages-status");
 const retry = document.querySelector("#messages-retry");
@@ -29,12 +31,7 @@ async function loadMessages() {
   retry.hidden = true;
   status.textContent = "Loading messages…";
   try {
-    const response = await fetch("/api/messages", {
-      credentials: "omit",
-      signal: AbortSignal.timeout(15_000),
-    });
-    if (!response.ok) throw new Error("Messages unavailable");
-    const { data } = await response.json();
+    const data = await fetchMessages();
     list.replaceChildren(...data.map(messageRow));
     status.textContent = data.length ? "" : "No messages yet.";
   } catch {

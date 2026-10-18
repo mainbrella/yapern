@@ -1,6 +1,13 @@
 import { messageBoardConfig } from "./config.js";
 import { readStoredSession } from "./auth.js";
 
+const isMessage = (message) => message &&
+  ["id", "board_id", "user_id", "title", "body", "created_at"].every(key => typeof message[key] === "string") &&
+  Number.isFinite(Date.parse(message.created_at));
+const isBoard = (board) => board && typeof board.id === "string" &&
+  typeof board.slug === "string" && /^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?$/.test(board.slug) &&
+  typeof board.name === "string" && typeof board.description === "string";
+
 // The browser calls Mainbrella directly. The public key must allow the site's
 // exact Origin; Mainbrella handles both CORS preflight and the table read.
 async function readRows(table, params, fetcher) {
@@ -38,11 +45,7 @@ export async function fetchMessages(fetcher = fetch, { boardId, messageId } = {}
   if (
     !messages.every(
       (message) =>
-        message &&
-        ["id", "board_id", "user_id", "title", "body", "created_at"].every(
-          (key) => typeof message[key] === "string",
-        ) &&
-        Number.isFinite(Date.parse(message.created_at)) &&
+        isMessage(message) &&
         (boardId === undefined || message.board_id === boardId) &&
         (messageId === undefined || message.id === messageId),
     )
@@ -56,9 +59,7 @@ async function readBoards(params, fetcher) {
   const boards = await readRows("boards", {
     select: "id,slug,name,description", ...params,
   }, fetcher);
-  if (!boards.every(board => board && typeof board.id === "string" &&
-    typeof board.slug === "string" && /^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?$/.test(board.slug) &&
-    typeof board.name === "string" && typeof board.description === "string")) {
+  if (!boards.every(isBoard)) {
     throw new Error("Invalid boards");
   }
   return boards;
@@ -81,4 +82,56 @@ export async function fetchBoardPage(slug, messageId, fetcher = fetch) {
   const messages = await fetchMessages(fetcher, { boardId: board.id, messageId });
   if (messageId !== undefined && !messages.length) return null;
   return { board, messages };
+}
+
+async function insertRow(table, values, validate, fetcher) {
+  const session = readStoredSession();
+  if (!session) throw new Error("Your session has expired. Open Account and sign in again to continue.");
+  const { apiOrigin, projectId, publicKey } = messageBoardConfig;
+  const url = new URL(`/bff/data/${encodeURIComponent(projectId)}/tables/${encodeURIComponent(table)}`, apiOrigin);
+  let response;
+  try {
+    response = await fetcher(url, {
+      method: "POST", mode: "cors", credentials: "omit", redirect: "error",
+      signal: AbortSignal.timeout(15_000),
+      headers: { apikey: publicKey, authorization: `Bearer ${session.token}`, "content-type": "application/json" },
+      body: JSON.stringify({ ...values, user_id: session.session.user_id }),
+    });
+  } catch {
+    throw new Error("Could not confirm creation. Check your connection and the board before trying again.");
+  }
+  if (response.status === 401) throw new Error("Your session has expired. Open Account and sign in again to continue.");
+  if (response.status === 403) throw new Error(table === "boards"
+    ? "You don’t have permission to create boards."
+    : "You don’t have permission to post to this board.");
+  if (response.status === 409 && table === "boards") throw new Error("A board with that name already exists. Choose another name.");
+  if (!response.ok) throw new Error("Could not create this right now. Please try again.");
+  const payload = await response.json().catch(() => null);
+  const row = payload?.data?.[0];
+  if (!Array.isArray(payload?.data) || payload.data.length !== 1 || !validate(row) || !row.id ||
+    row.user_id !== session.session.user_id || Object.entries(values).some(([key, value]) => row[key] !== value)) {
+    throw new Error("Could not confirm creation. Check the board before trying again.");
+  }
+  return row;
+}
+
+export async function createBoard(name, description, fetcher = fetch) {
+  const cleanName = name.trim();
+  const cleanDescription = description.trim();
+  if (!cleanName || cleanName.length > 80) throw new Error("Enter a board name of 1–80 characters.");
+  if (cleanDescription.length > 2000) throw new Error("Enter a description of at most 2000 characters.");
+  const slug = cleanName.toLowerCase().replace(/\s+/g, "-");
+  if (!/^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?$/.test(slug)) {
+    throw new Error("Use letters (a–z), numbers, spaces, or hyphens in the board name, starting and ending with a letter or number.");
+  }
+  return insertRow("boards", { slug, name: cleanName, description: cleanDescription }, isBoard, fetcher);
+}
+
+export async function createMessage(boardId, title, body, fetcher = fetch) {
+  const cleanTitle = title.trim();
+  const cleanBody = body.trim();
+  if (!boardId.trim()) throw new Error("Choose a board for your message.");
+  if (!cleanTitle || cleanTitle.length > 200) throw new Error("Enter a title of 1–200 characters.");
+  if (!cleanBody || cleanBody.length > 2000) throw new Error("Enter a message of 1–2000 characters.");
+  return insertRow(messageBoardConfig.table, { board_id: boardId, title: cleanTitle, body: cleanBody }, isMessage, fetcher);
 }

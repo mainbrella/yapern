@@ -1,6 +1,6 @@
 import { readStoredSession } from "./auth.js";
 import { closeHeaderMenu } from "./auth-nav.js";
-import { fetchBoards, createBoard, createMessage } from "./messages-api.js";
+import { fetchBoards, createBoard, createMessage, fetchOgImage } from "./messages-api.js";
 import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
 
 const menu = document.querySelector("#create-menu");
@@ -23,6 +23,7 @@ const linkPanel = document.querySelector("#create-link-panel");
 const linkUrl = document.querySelector("#create-link-url");
 const linkRemove = document.querySelector("#create-link-remove");
 const linkError = document.querySelector("#create-link-error");
+const linkPreview = document.querySelector("#create-link-preview");
 const bodyRequirement = document.querySelector("#create-body-requirement");
 const name = document.querySelector("#new-board-name");
 const description = document.querySelector("#new-board-description");
@@ -33,6 +34,9 @@ let boardsFailed = false;
 let saving = false;
 let previousOverflow = "";
 let linkTouched = false;
+let linkPreviewTimer;
+let linkPreviewController;
+let linkPreviewUrl = "";
 
 function linkUrlError() {
   const value = linkUrl.value.trim();
@@ -42,6 +46,46 @@ function linkUrlError() {
     if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname) return "";
   } catch {}
   return "Enter a full URL starting with http:// or https://.";
+}
+
+function clearLinkPreview() {
+  clearTimeout(linkPreviewTimer);
+  linkPreviewController?.abort();
+  linkPreviewController = null;
+  linkPreviewUrl = "";
+  linkPreview.hidden = true;
+  linkPreview.replaceChildren();
+}
+
+function scheduleLinkPreview() {
+  const value = linkUrl.value.trim();
+  if (!messageDialog.open || linkPanel.hidden || linkUrlError()) {
+    clearLinkPreview();
+    return;
+  }
+  if (value === linkPreviewUrl) return;
+  clearLinkPreview();
+  linkPreviewUrl = value;
+  const controller = new AbortController();
+  linkPreviewController = controller;
+  linkPreviewTimer = setTimeout(async () => {
+    try {
+      const imageUrl = await fetchOgImage(value, fetch, { signal: controller.signal });
+      if (controller.signal.aborted || !imageUrl) return;
+      const image = document.createElement("img");
+      image.alt = "Link preview";
+      image.referrerPolicy = "no-referrer";
+      image.decoding = "async";
+      image.addEventListener("load", () => {
+        if (!controller.signal.aborted) linkPreview.hidden = false;
+      }, { once: true });
+      image.addEventListener("error", () => {
+        if (!controller.signal.aborted) linkPreview.replaceChildren();
+      }, { once: true });
+      linkPreview.replaceChildren(image);
+      image.src = imageUrl;
+    } catch { /* Image previews are optional; posting remains available. */ }
+  }, 400);
 }
 
 function serializedMessageBody() {
@@ -66,6 +110,7 @@ function setLinkPanelOpen(open) {
   body.required = !open;
   bodyRequirement.textContent = open ? "(optional)" : "(required)";
   if (!open) {
+    clearLinkPreview();
     linkUrl.value = "";
     linkTouched = false;
     syncLinkValidation();
@@ -144,12 +189,14 @@ function updateForms() {
 messageForm.addEventListener("input", updateForms);
 linkToggle.addEventListener("click", () => setLinkPanelOpen(true));
 linkRemove.addEventListener("click", () => setLinkPanelOpen(false));
+linkUrl.addEventListener("input", scheduleLinkPreview);
 linkUrl.addEventListener("blur", () => {
   linkTouched = true;
   syncLinkValidation();
   updateForms();
 });
 messageForm.addEventListener("reset", () => {
+  clearLinkPreview();
   linkPanel.hidden = true;
   linkToggle.setAttribute("aria-expanded", "false");
   linkUrl.required = false;
@@ -206,7 +253,10 @@ createActions.forEach(item => item.addEventListener("click", () => {
   previousOverflow = document.documentElement.style.overflow;
   document.documentElement.style.overflow = "hidden";
   dialog.showModal();
-  if (dialog === messageDialog) void loadBoards();
+  if (dialog === messageDialog) {
+    void loadBoards();
+    scheduleLinkPreview();
+  }
   updateForms();
 }));
 
@@ -216,7 +266,10 @@ for (const dialog of [messageDialog, boardDialog]) {
   }));
   dialog.addEventListener("cancel", event => { if (saving) event.preventDefault(); });
   dialog.addEventListener("close", () => {
-    if (dialog === messageDialog) boardRequest++;
+    if (dialog === messageDialog) {
+      boardRequest++;
+      clearLinkPreview();
+    }
     document.documentElement.style.overflow = previousOverflow;
     syncSession();
     const mobileToggle = document.querySelector("#header-toggle");

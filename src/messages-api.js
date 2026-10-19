@@ -37,6 +37,31 @@ async function readRows(table, params, fetcher) {
   return payload.data;
 }
 
+export async function fetchOgImage(value, fetcher = fetch, { signal } = {}) {
+  const session = readStoredSession();
+  if (!session) return null;
+  let target;
+  try {
+    target = new URL(value.trim());
+    if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) return null;
+    target.hash = "";
+  } catch { return null; }
+  const response = await fetcher(new URL("/bff/og-image", messageBoardConfig.apiOrigin), {
+    method: "POST", mode: "cors", credentials: "omit", redirect: "error", cache: "no-store",
+    headers: { apikey: messageBoardConfig.publicKey, authorization: `Bearer ${session.token}`, "content-type": "application/json" },
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
+    body: JSON.stringify({ url: target.href }),
+  });
+  if (!response.ok) throw new Error("Link preview unavailable.");
+  const payload = await response.json();
+  if (typeof payload?.image !== "string") return null;
+  try {
+    const image = new URL(payload.image);
+    if (["http:", "https:"].includes(image.protocol) && !image.username && !image.password) return image.href;
+  } catch {}
+  return null;
+}
+
 export async function fetchMessages(fetcher = fetch, { boardId, messageId } = {}) {
   const params = {
     select: "id,board_id,user_id,title,body,created_at",

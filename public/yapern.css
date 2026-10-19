@@ -356,6 +356,9 @@ a {
 .create-link-panel .create-field { gap: 6px; }
 .create-link-error { color: #ffb4ab; font-size: 13px; }
 .create-link-error:empty { display: none; }
+.create-link-preview { aspect-ratio: 1.91; max-height: 240px; overflow: hidden; border-radius: 4px; }
+.create-link-preview[hidden] { display: none; }
+.create-link-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .create-editor { display: grid; gap: 6px; min-width: 0; }
 .create-editor-toolbar {
   display: flex;

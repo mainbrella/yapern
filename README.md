@@ -53,6 +53,10 @@ message** and **Create board**. The dialogs follow `../mb`: messages include a
 board selector, title, and body; boards include a name and optional description.
 Both submit directly to BFF with the current session, preserve input on errors,
 and open the created board or message after the API confirms the saved row.
+In the message dialog, adding a link also requests an optional image preview
+from `POST /bff/og-image` with the existing project login. Lookup or image-load
+failures do not block posting; the preview exists only in the open dialog and
+does not change the message schema.
 
 Before publishing the login page, apply Canopy backend migration
 `056_bff_email_accounts.sql` and deploy the updated BFF API. Credentials are

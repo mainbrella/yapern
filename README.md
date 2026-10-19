@@ -102,3 +102,10 @@ not part of an origin. Never put an owner/account API key in the site.
 Run `npm run build` before `npm run preview`. The generated `dist/` directory can
 be served by any static host. Wrangler publishes it as static assets only;
 `npx wrangler deploy --dry-run` checks deployment without publishing.
+
+The blog at `/blog/` uses the same static pagination pattern as AHP Tour: six
+articles per page, with older pages at `/blog/page/2/` and onward. The list and
+pagination render during development and at build time, so articles are
+discoverable without JavaScript. Add article metadata in `src/blog.js`, create
+its `blog/<slug>/index.html`, register it in `vite.config.js`, and include its URL
+in `public/sitemap.xml`. Article media lives in `public/images/blog/<slug>/`.

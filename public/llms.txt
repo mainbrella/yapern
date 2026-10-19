@@ -3,6 +3,7 @@
 > An open source sub-yap with sub-yaps and community moderators.
 
 - Homepage: https://yapern.com/
+- Blog: https://yapern.com/blog/
 - Source code: https://github.com/mainbrella/yapern
 - License: GNU General Public License v3.0 (GPL v3)
 - Backend: Mainbrella BFF, https://mainbrella.com/bff/

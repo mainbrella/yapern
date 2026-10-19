@@ -58,7 +58,7 @@ test("invalid input and missing or expired sessions never send a write", async t
 test("write errors are useful, never expose backend details, and do not automatically retry", async t => {
   t.after(() => storeSession(null));
   storeSession(session);
-  for (const [status, pattern] of [[401, /session has expired/], [403, /permission to create boards/], [409, /already exists/], [500, /Could not create/]]) {
+  for (const [status, pattern] of [[401, /session has expired/], [403, /permission to create sub-yaps/], [409, /already exists/], [500, /Could not create/]]) {
     let calls = 0;
     await assert.rejects(createBoard("Valid", "", async () => {
       calls++;

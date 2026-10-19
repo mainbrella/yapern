@@ -95,7 +95,7 @@ async function loadMessages() {
     if (isBoardPage) {
       const result = route && await fetchBoardPage(route.slug, route.messageId);
       if (!result) {
-        const resource = route?.messageId === undefined ? "Board" : "Message";
+        const resource = route?.messageId === undefined ? "Sub-yap" : "Message";
         heading.textContent = `${resource} not found`;
         document.title = `${resource} not found · Yapern`;
         status.textContent = `We couldn't find that ${resource.toLowerCase()}.`;

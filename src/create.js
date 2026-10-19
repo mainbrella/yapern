@@ -1,7 +1,7 @@
 import { readStoredSession } from "./auth.js";
 import { closeHeaderMenu } from "./auth-nav.js";
 import { fetchBoards, createBoard, createMessage } from "./messages-api.js";
-import { boardHref, messageHref } from "./board-routes.js";
+import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
 
 const menu = document.querySelector("#create-menu");
 const toggle = document.querySelector("#create-toggle");
@@ -167,7 +167,7 @@ async function loadBoards() {
   const request = ++boardRequest;
   boardsLoading = true;
   boardsFailed = false;
-  boardsStatus.textContent = "Loading boards…";
+  boardsStatus.textContent = "Loading sub-yaps…";
   boardsRetry.hidden = true;
   updateForms();
   try {
@@ -177,14 +177,16 @@ async function loadBoards() {
     boards = result;
     boardSelect.replaceChildren(...(boards.length
       ? boards.map(board => new Option(`y/${board.slug}`, board.id))
-      : [new Option("No boards available", "")]));
-    if (boards.some(board => board.id === previous)) boardSelect.value = previous;
-    boardsStatus.textContent = boards.length ? "" : "There are no boards to post to yet. Create a board from the Create menu.";
+      : [new Option("No sub-yaps available", "")]));
+    const routeBoard = boards.find(board => board.slug === parseBoardRoute(window.location.pathname)?.slug);
+    if (routeBoard) boardSelect.value = routeBoard.id;
+    else if (boards.some(board => board.id === previous)) boardSelect.value = previous;
+    boardsStatus.textContent = boards.length ? "" : "There are no sub-yaps to post to yet. Create a sub-yap from the Create menu.";
   } catch {
     if (request !== boardRequest) return;
     boardsFailed = true;
-    boardsStatus.textContent = "Boards are unavailable right now. Please try again.";
-    boardSelect.replaceChildren(new Option("Boards unavailable", ""));
+    boardsStatus.textContent = "Sub-yaps are unavailable right now. Please try again.";
+    boardSelect.replaceChildren(new Option("Sub-yaps unavailable", ""));
     boardsRetry.hidden = false;
   } finally {
     if (request === boardRequest) {
@@ -260,4 +262,4 @@ messageForm.addEventListener("submit", event => void submit(event, messageDialog
 boardForm.addEventListener("submit", event => void submit(event, boardDialog, async () => {
   const board = await createBoard(name.value, description.value);
   return boardHref(board.slug);
-}, "Creating…", "Create board"));
+}, "Creating…", "Create sub-yap"));

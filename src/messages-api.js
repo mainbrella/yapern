@@ -25,10 +25,10 @@ async function readRows(table, params, fetcher) {
     redirect: "error",
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) throw new Error("Message board unavailable");
+  if (!response.ok) throw new Error("Sub-yap unavailable");
   const payload = await response.json();
   if (!Array.isArray(payload?.data) || payload.data.length > Number(params.limit)) {
-    throw new Error("Invalid message board data");
+    throw new Error("Invalid sub-yap data");
   }
   return payload.data;
 }
@@ -74,7 +74,7 @@ async function readBoards(params, fetcher) {
     select: "id,slug,name,description", ...params,
   }, fetcher);
   if (!boards.every(isBoard)) {
-    throw new Error("Invalid boards");
+    throw new Error("Invalid sub-yaps");
   }
   return boards;
 }
@@ -92,7 +92,7 @@ export async function fetchBoardPage(slug, messageId, fetcher = fetch) {
   const boards = await readBoards({ slug: `eq.${slug}`, limit: "1" }, fetcher);
   const board = boards[0];
   if (!board) return null;
-  if (board.slug !== slug) throw new Error("Unexpected board");
+  if (board.slug !== slug) throw new Error("Unexpected sub-yap");
   const messages = await fetchMessages(fetcher, { boardId: board.id, messageId });
   if (messageId !== undefined && !messages.length) return null;
   return { board, messages };
@@ -112,19 +112,19 @@ async function insertRow(table, values, validate, fetcher) {
       body: JSON.stringify({ ...values, user_id: session.session.user_id }),
     });
   } catch {
-    throw new Error("Could not confirm creation. Check your connection and the board before trying again.");
+    throw new Error("Could not confirm creation. Check your connection and the sub-yap before trying again.");
   }
   if (response.status === 401) throw new Error("Your session has expired. Open Account and sign in again to continue.");
   if (response.status === 403) throw new Error(table === "boards"
-    ? "You don’t have permission to create boards."
-    : "You don’t have permission to post to this board.");
-  if (response.status === 409 && table === "boards") throw new Error("A board with that name already exists. Choose another name.");
+    ? "You don’t have permission to create sub-yaps."
+    : "You don’t have permission to post to this sub-yap.");
+  if (response.status === 409 && table === "boards") throw new Error("A sub-yap with that name already exists. Choose another name.");
   if (!response.ok) throw new Error("Could not create this right now. Please try again.");
   const payload = await response.json().catch(() => null);
   const row = payload?.data?.[0];
   if (!Array.isArray(payload?.data) || payload.data.length !== 1 || !validate(row) || !row.id ||
     row.user_id !== session.session.user_id || Object.entries(values).some(([key, value]) => row[key] !== value)) {
-    throw new Error("Could not confirm creation. Check the board before trying again.");
+    throw new Error("Could not confirm creation. Check the sub-yap before trying again.");
   }
   return row;
 }
@@ -132,11 +132,11 @@ async function insertRow(table, values, validate, fetcher) {
 export async function createBoard(name, description, fetcher = fetch) {
   const cleanName = name.trim();
   const cleanDescription = description.trim();
-  if (!cleanName || cleanName.length > 80) throw new Error("Enter a board name of 1–80 characters.");
+  if (!cleanName || cleanName.length > 80) throw new Error("Enter a sub-yap name of 1–80 characters.");
   if (cleanDescription.length > 2000) throw new Error("Enter a description of at most 2000 characters.");
   const slug = cleanName.toLowerCase().replace(/\s+/g, "-");
   if (!/^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?$/.test(slug)) {
-    throw new Error("Use letters (a–z), numbers, spaces, or hyphens in the board name, starting and ending with a letter or number.");
+    throw new Error("Use letters (a–z), numbers, spaces, or hyphens in the sub-yap name, starting and ending with a letter or number.");
   }
   return insertRow("boards", { slug, name: cleanName, description: cleanDescription }, isBoard, fetcher);
 }
@@ -144,7 +144,7 @@ export async function createBoard(name, description, fetcher = fetch) {
 export async function createMessage(boardId, title, body, fetcher = fetch) {
   const cleanTitle = title.trim();
   const cleanBody = body.trim();
-  if (!boardId.trim()) throw new Error("Choose a board for your message.");
+  if (!boardId.trim()) throw new Error("Choose a sub-yap for your message.");
   if (!cleanTitle || cleanTitle.length > 200) throw new Error("Enter a title of 1–200 characters.");
   if (!cleanBody || cleanBody.length > 2000) throw new Error("Enter a message of 1–2000 characters.");
   return insertRow(messageBoardConfig.table, { board_id: boardId, title: cleanTitle, body: cleanBody }, isMessage, fetcher);

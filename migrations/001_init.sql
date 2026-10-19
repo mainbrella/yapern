@@ -13,5 +13,5 @@ CREATE INDEX messages_user ON messages(user_id);
 CREATE INDEX messages_created ON messages(created_at);
 INSERT INTO users(id,name) VALUES('alice','Alice'),('bob','Bob');
 INSERT INTO messages(id,user_id,body) VALUES
-  ('welcome','alice','Welcome to the message board! Everyone can read messages. Try editing this as Alice.'),
+  ('welcome','alice','Welcome to the sub-yap! Everyone can read messages. Try editing this as Alice.'),
   ('reply','bob','Hi Alice! Switch to Bob to edit or delete this message. Each user can only change their own posts.');

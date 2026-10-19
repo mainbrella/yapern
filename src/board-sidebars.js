@@ -38,7 +38,7 @@ export function mountBoardSidebars(activeSlug) {
       item.append(link);
       return item;
     }));
-    boardStatus.textContent = boards.length ? "" : "No boards yet.";
+    boardStatus.textContent = boards.length ? "" : "No sub-yaps yet.";
   }
 
   function renderRecent() {
@@ -49,7 +49,7 @@ export function mountBoardSidebars(activeSlug) {
       const meta = document.createElement("div");
       meta.className = "detail-recent-meta";
       const boardLabel = document.createElement(board ? "a" : "span");
-      boardLabel.textContent = board ? `y/${board.slug}` : boardsSettled ? "Board unavailable" : "Loading board…";
+      boardLabel.textContent = board ? `y/${board.slug}` : boardsSettled ? "Sub-yap unavailable" : "Loading sub-yap…";
       if (board) boardLabel.href = boardHref(board.slug);
       const time = document.createElement("time");
       time.dateTime = message.created_at;
@@ -74,7 +74,7 @@ export function mountBoardSidebars(activeSlug) {
   async function loadBoards() {
     navigation.setAttribute("aria-busy", "true");
     boardRetry.hidden = true;
-    boardStatus.textContent = "Loading boards…";
+    boardStatus.textContent = "Loading sub-yaps…";
     try {
       boards = await fetchBoards();
       boardsSettled = true;
@@ -82,7 +82,7 @@ export function mountBoardSidebars(activeSlug) {
       if (recentLoaded) renderRecent();
     } catch {
       boardsSettled = true;
-      boardStatus.textContent = "Boards are unavailable.";
+      boardStatus.textContent = "Sub-yaps are unavailable.";
       boardRetry.hidden = false;
       if (recentLoaded) renderRecent();
     } finally {

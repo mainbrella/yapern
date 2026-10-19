@@ -2,6 +2,7 @@ import { fetchMessages, fetchBoards, fetchBoardPage, fetchMessageAuthors } from 
 import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
 import { mountBoardSidebars } from "./board-sidebars.js";
 import { parseMessageText } from "./message-text.js";
+import { mountReplies } from "./replies.js";
 
 const list = document.querySelector("#live-messages");
 const status = document.querySelector("#messages-status");
@@ -15,15 +16,17 @@ const route = isBoardPage ? parseBoardRoute(window.location.pathname) : null;
 function messageRow(message, board, authors) {
   const item = document.createElement("li");
   const article = document.createElement("article");
-  const title = document.createElement(isBoardPage ? "h2" : "h3");
-  title.className = "live-message-title";
-  if (board) {
-    const link = document.createElement("a");
-    link.href = messageHref(board.slug, message.id);
-    link.textContent = message.title;
-    title.append(link);
-  } else {
-    title.textContent = message.title;
+  const title = message.title === undefined ? null : document.createElement(isBoardPage ? "h2" : "h3");
+  if (title) {
+    title.className = "live-message-title";
+    if (board) {
+      const link = document.createElement("a");
+      link.href = messageHref(board.slug, message.id);
+      link.textContent = message.title;
+      title.append(link);
+    } else {
+      title.textContent = message.title;
+    }
   }
   const meta = document.createElement("p");
   meta.className = "live-message-meta";
@@ -66,7 +69,9 @@ function messageRow(message, board, authors) {
       body.append(document.createTextNode(part.text));
     }
   }
-  article.append(meta, title, body);
+  article.append(meta);
+  if (title) article.append(title);
+  article.append(body);
   for (const part of youtubeParts) {
     const video = document.createElement("iframe");
     video.className = "live-message-video";
@@ -115,6 +120,9 @@ async function loadMessages() {
     const byId = new Map(boards.map(board => [board.id, board]));
     list.replaceChildren(...data.map(message => messageRow(message, byId.get(message.board_id), authors)));
     status.textContent = data.length ? "" : "No messages yet.";
+    if (route?.messageId !== undefined && data.length) {
+      mountReplies(data[0].id, (reply, replyAuthors) => messageRow(reply, null, replyAuthors));
+    }
   } catch {
     status.textContent = "Messages are unavailable right now. Please try again.";
     retry.hidden = false;

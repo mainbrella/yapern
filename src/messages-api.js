@@ -4,6 +4,10 @@ import { readStoredSession } from "./auth.js";
 const isMessage = (message) => message &&
   ["id", "board_id", "user_id", "title", "body", "created_at"].every(key => typeof message[key] === "string") &&
   Number.isFinite(Date.parse(message.created_at));
+const isReply = (reply) => reply &&
+  ["id", "message_id", "user_id", "body", "created_at"].every(key => typeof reply[key] === "string") &&
+  reply.id.trim().length > 0 && reply.message_id.trim().length > 0 && reply.user_id.trim().length > 0 &&
+  Number.isFinite(Date.parse(reply.created_at)) && reply.body.trim().length > 0 && reply.body.length <= 2000;
 const isBoard = (board) => board && typeof board.id === "string" &&
   typeof board.slug === "string" && /^[a-z0-9]+(?:[a-z0-9-]*[a-z0-9])?$/.test(board.slug) &&
   typeof board.name === "string" && typeof board.description === "string";
@@ -53,6 +57,25 @@ export async function fetchMessages(fetcher = fetch, { boardId, messageId } = {}
     throw new Error("Invalid messages");
   }
   return messages;
+}
+
+export async function fetchReplies(messageId, fetcher = fetch) {
+  if (typeof messageId !== "string" || !messageId.trim()) throw new Error("Choose a message to view replies.");
+  const replies = [];
+  for (let offset = 0; ; offset += 100) {
+    const page = await readRows("replies", {
+      select: "id,message_id,user_id,body,created_at",
+      message_id: `eq.${messageId}`,
+      order: "created_at.asc",
+      limit: "100",
+      offset: String(offset),
+    }, fetcher);
+    if (!page.every(reply => isReply(reply) && reply.message_id === messageId)) {
+      throw new Error("Invalid replies");
+    }
+    replies.push(...page);
+    if (page.length < 100) return replies;
+  }
 }
 
 export async function fetchMessageAuthors(messages, fetcher = fetch) {
@@ -117,7 +140,9 @@ async function insertRow(table, values, validate, fetcher) {
   if (response.status === 401) throw new Error("Your session has expired. Open Account and sign in again to continue.");
   if (response.status === 403) throw new Error(table === "boards"
     ? "You don’t have permission to create sub-yaps."
-    : "You don’t have permission to post to this sub-yap.");
+    : table === "replies"
+      ? "You don’t have permission to reply to this message."
+      : "You don’t have permission to post to this sub-yap.");
   if (response.status === 409 && table === "boards") throw new Error("A sub-yap with that name already exists. Choose another name.");
   if (!response.ok) throw new Error("Could not create this right now. Please try again.");
   const payload = await response.json().catch(() => null);
@@ -148,4 +173,14 @@ export async function createMessage(boardId, title, body, fetcher = fetch) {
   if (!cleanTitle || cleanTitle.length > 200) throw new Error("Enter a title of 1–200 characters.");
   if (!cleanBody || cleanBody.length > 2000) throw new Error("Enter a message of 1–2000 characters.");
   return insertRow(messageBoardConfig.table, { board_id: boardId, title: cleanTitle, body: cleanBody }, isMessage, fetcher);
+}
+
+export async function createReply(messageId, body, fetcher = fetch) {
+  if (typeof messageId !== "string" || typeof body !== "string") {
+    throw new Error("Enter a message and reply.");
+  }
+  const cleanBody = body.trim();
+  if (!messageId.trim()) throw new Error("Choose a message to reply to.");
+  if (!cleanBody || cleanBody.length > 2000) throw new Error("Enter a reply of 1–2000 characters.");
+  return insertRow("replies", { message_id: messageId, body: cleanBody }, isReply, fetcher);
 }

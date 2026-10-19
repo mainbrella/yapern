@@ -62,7 +62,9 @@ screenshot and the page polls its authenticated preview status for up to about
 one minute. The pending favicon is only used if screenshot generation fails;
 closing the dialog or changing the link cancels the lookup. Screenshot previews
 require backend migration `057_bff_previews.sql` and the updated BFF queue
-worker to be deployed. Screenshot preview URLs expire after 14 days.
+worker to be deployed. A loading status remains visible through screenshot polling
+and image loading. Screenshot preview URLs expire after 14 days.
+For browser diagnostics, filter the console for `[link-preview]`.
 
 Before publishing the login page, apply Canopy backend migration
 `056_bff_email_accounts.sql` and deploy the updated BFF API. Credentials are

@@ -356,6 +356,9 @@ a {
 .create-link-panel .create-field { gap: 6px; }
 .create-link-error { color: #ffb4ab; font-size: 13px; }
 .create-link-error:empty { display: none; }
+.create-link-loading { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+.create-link-loading[hidden] { display: none; }
+.create-link-spinner { width: 16px; height: 16px; flex: 0 0 16px; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; }
 .create-link-preview { aspect-ratio: 1.91; max-height: 240px; overflow: hidden; border-radius: 4px; }
 .create-link-preview[hidden] { display: none; }
 .create-link-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
@@ -2044,6 +2047,8 @@ a.detail-recent-post:hover .detail-recent-title {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
+  .create-link-spinner { animation: create-link-spin 800ms linear infinite; }
+  @keyframes create-link-spin { to { transform: rotate(360deg); } }
   .hero-copy {
     animation: enter 450ms ease both;
   }

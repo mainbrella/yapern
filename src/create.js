@@ -23,6 +23,7 @@ const linkPanel = document.querySelector("#create-link-panel");
 const linkUrl = document.querySelector("#create-link-url");
 const linkRemove = document.querySelector("#create-link-remove");
 const linkError = document.querySelector("#create-link-error");
+const linkPreviewLoading = document.querySelector("#create-link-loading");
 const linkPreview = document.querySelector("#create-link-preview");
 const bodyRequirement = document.querySelector("#create-body-requirement");
 const name = document.querySelector("#new-board-name");
@@ -36,8 +37,19 @@ let previousOverflow = "";
 let linkTouched = false;
 let linkPreviewTimer;
 let linkPreviewController;
+let linkPreviewLookupPending = false;
 let linkPreviewUrl = "";
 let fetchedImageUrl = "";
+
+function logLinkPreview(level, event, details = {}) {
+  console[level]("[link-preview]", event, details);
+}
+
+function linkPreviewErrorKind(error) {
+  if (error?.name === "TimeoutError") return "timeout";
+  if (error?.name === "TypeError") return "network-or-cors";
+  return "request-error";
+}
 
 function linkUrlError() {
   const value = linkUrl.value.trim();
@@ -50,19 +62,35 @@ function linkUrlError() {
 }
 
 function clearLinkPreview() {
+  const cancelled = Boolean(linkPreviewTimer || linkPreviewLookupPending || !linkPreviewLoading.hidden);
   clearTimeout(linkPreviewTimer);
+  linkPreviewTimer = undefined;
   linkPreviewController?.abort();
   linkPreviewController = null;
+  linkPreviewLookupPending = false;
+  if (cancelled) logLinkPreview("info", "lookup cancelled", { reason: "link-changed-or-dialog-closed" });
   linkPreviewUrl = "";
   fetchedImageUrl = "";
+  linkPreviewLoading.hidden = true;
+  linkPreview.setAttribute("aria-busy", "false");
   linkPreview.hidden = true;
   linkPreview.replaceChildren();
 }
 
 function scheduleLinkPreview() {
   const value = linkUrl.value.trim();
-  if (!messageDialog.open || linkPanel.hidden || linkUrlError()) {
+  if (!messageDialog.open || linkPanel.hidden) {
     clearLinkPreview();
+    return;
+  }
+  if (!value) {
+    clearLinkPreview();
+    logLinkPreview("info", "lookup skipped", { reason: "empty-url" });
+    return;
+  }
+  if (linkUrlError()) {
+    clearLinkPreview();
+    logLinkPreview("warn", "lookup skipped", { reason: "invalid-url" });
     return;
   }
   if (value === linkPreviewUrl) return;
@@ -70,10 +98,21 @@ function scheduleLinkPreview() {
   linkPreviewUrl = value;
   const controller = new AbortController();
   linkPreviewController = controller;
+  logLinkPreview("info", "lookup scheduled", { debounceMs: 400 });
+  linkPreviewLoading.hidden = false;
+  linkPreview.setAttribute("aria-busy", "true");
   linkPreviewTimer = setTimeout(async () => {
+    linkPreviewTimer = undefined;
+    linkPreviewLookupPending = true;
     try {
       const imageUrl = await fetchOgImage(value, fetch, { signal: controller.signal });
-      if (controller.signal.aborted || !imageUrl) return;
+      if (controller.signal.aborted || linkPreviewController !== controller) return;
+      if (!imageUrl) {
+        logLinkPreview("info", "lookup completed without image");
+        linkPreviewLoading.hidden = true;
+        linkPreview.setAttribute("aria-busy", "false");
+        return;
+      }
       fetchedImageUrl = imageUrl;
       updateForms();
       const image = document.createElement("img");
@@ -81,14 +120,36 @@ function scheduleLinkPreview() {
       image.referrerPolicy = "no-referrer";
       image.decoding = "async";
       image.addEventListener("load", () => {
-        if (!controller.signal.aborted) linkPreview.hidden = false;
+        if (!controller.signal.aborted && linkPreviewController === controller) {
+          logLinkPreview("info", "image loaded");
+          linkPreviewLoading.hidden = true;
+          linkPreview.setAttribute("aria-busy", "false");
+          linkPreview.hidden = false;
+        }
       }, { once: true });
       image.addEventListener("error", () => {
-        if (!controller.signal.aborted) linkPreview.replaceChildren();
+        if (!controller.signal.aborted && linkPreviewController === controller) {
+          logLinkPreview("warn", "image failed to load");
+          linkPreviewLoading.hidden = true;
+          linkPreview.setAttribute("aria-busy", "false");
+          linkPreview.replaceChildren();
+        }
       }, { once: true });
       linkPreview.replaceChildren(image);
       image.src = imageUrl;
-    } catch { /* Image previews are optional; posting remains available. */ }
+    } catch (error) {
+      if (controller.signal.aborted || error?.name === "AbortError") {
+        logLinkPreview("info", "lookup cancelled", { reason: "request-aborted" });
+      } else if (linkPreviewController === controller) {
+        logLinkPreview("warn", "lookup exception", { reason: linkPreviewErrorKind(error) });
+      }
+      if (linkPreviewController === controller) {
+        linkPreviewLoading.hidden = true;
+        linkPreview.setAttribute("aria-busy", "false");
+      }
+    } finally {
+      if (linkPreviewController === controller) linkPreviewLookupPending = false;
+    }
   }, 400);
 }
 

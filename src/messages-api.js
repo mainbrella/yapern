@@ -39,6 +39,34 @@ async function readRows(table, params, fetcher) {
 
 const previewTimeoutMs = 60_000;
 const previewRequestTimeoutMs = 10_000;
+const previewSources = new Set(["og", "twitter", "screenshot", "favicon", "placeholder"]);
+
+function previewLog(level, event, details = {}) {
+  console[level]("[link-preview]", event, details);
+}
+
+function previewSummary(payload) {
+  const status = ["ready", "pending", "failed"].includes(payload?.status) ? payload.status : "unknown";
+  const source = previewSources.has(payload?.source) ? payload.source : "unknown";
+  const error = typeof payload?.error === "string" ? payload.error
+    : typeof payload?.error?.code === "string" ? payload.error.code
+      : payload?.code;
+  const errorCode = typeof error === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(error) ? error : undefined;
+  return {
+    status,
+    source,
+    ...(typeof payload?.previewId === "string" && /^[0-9a-f-]{36}$/i.test(payload.previewId)
+      ? { previewId: payload.previewId } : {}),
+    imagePresent: typeof payload?.image === "string" && payload.image.length > 0,
+    ...(errorCode ? { errorCode } : {}),
+  };
+}
+
+function previewFailureKind(error) {
+  if (error?.name === "TimeoutError") return "timeout";
+  if (error?.name === "TypeError") return "network-or-cors";
+  return "request-error";
+}
 
 function validatedImage(value) {
   if (typeof value !== "string") return null;
@@ -73,13 +101,22 @@ function waitForPreview(ms, signal) {
 
 export async function fetchOgImage(value, fetcher = fetch, { signal } = {}) {
   const session = readStoredSession();
-  if (!session) return null;
+  if (!session) {
+    previewLog("info", "lookup skipped", { reason: "missing-or-expired-session" });
+    return null;
+  }
   let target;
   try {
     target = new URL(value.trim());
-    if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) return null;
+    if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) {
+      previewLog("warn", "lookup skipped", { reason: "invalid-url" });
+      return null;
+    }
     target.hash = "";
-  } catch { return null; }
+  } catch {
+    previewLog("warn", "lookup skipped", { reason: "invalid-url" });
+    return null;
+  }
   const { apiOrigin, projectId, publicKey } = messageBoardConfig;
   const deadline = Date.now() + previewTimeoutMs;
   const headers = {
@@ -96,50 +133,116 @@ export async function fetchOgImage(value, fetcher = fetch, { signal } = {}) {
       headers: options.method === "POST" ? { ...headers, "content-type": "application/json" } : headers,
       signal: signal ? AbortSignal.any([signal, requestSignal]) : requestSignal,
     };
-    return fetcher(url, requestOptions);
-  };
-  const response = await request(new URL("/bff/og-image", apiOrigin), {
-    method: "POST",
-    body: JSON.stringify({ url: target.href, projectId }),
-  });
-  if (response.status !== 200 && response.status !== 202) throw new Error("Link preview unavailable.");
-  let payload = await response.json();
-  if (response.status === 200) {
-    return [undefined, "ready", "failed"].includes(payload?.status) ? validatedImage(payload?.image) : null;
-  }
-
-  const previewId = payload?.previewId;
-  if (payload?.status !== "pending" || typeof previewId !== "string" ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(previewId)) {
-    return null;
-  }
-  // Construct the poll URL from trusted configuration and the validated ID;
-  // never follow a server-provided URL that could redirect credentials.
-  const statusUrl = new URL(
-    `/bff/projects/${encodeURIComponent(projectId)}/previews/${encodeURIComponent(previewId)}`,
-    apiOrigin,
-  );
-  const fallbackImage = payload.source === "favicon" ? validatedImage(payload.image) : null;
-  let retryAfter = Number(response.headers.get("Retry-After"));
-  if (!Number.isFinite(retryAfter) || retryAfter <= 0) retryAfter = 3;
-  let delayMs = Math.min(previewTimeoutMs, Math.max(1000, retryAfter * 1000));
-
-  while (Date.now() < deadline) {
-    await waitForPreview(Math.min(delayMs, deadline - Date.now()), signal);
-    if (Date.now() >= deadline) break;
-    const pollResponse = await request(statusUrl, { method: "GET" });
-    if (pollResponse.status !== 200 && pollResponse.status !== 202) throw new Error("Link preview unavailable.");
-    payload = await pollResponse.json();
-    if (payload?.status === "ready") return validatedImage(payload.image);
-    if (payload?.status === "failed") return validatedImage(payload.image) ?? fallbackImage;
-    if (payload?.status !== "pending") return null;
-    if (payload.previewId !== undefined && payload.previewId !== previewId) return null;
-    const nextRetry = Number(pollResponse.headers.get("Retry-After"));
-    if (Number.isFinite(nextRetry) && nextRetry > 0) {
-      delayMs = Math.min(previewTimeoutMs, Math.max(1000, nextRetry * 1000));
+    const endpoint = new URL(url).pathname;
+    previewLog("info", "request started", { method: options.method ?? "GET", endpoint, projectId, target: target.href });
+    try {
+      return await fetcher(url, requestOptions);
+    } catch (error) {
+      if (signal?.aborted || error?.name === "AbortError") {
+        previewLog("info", "request cancelled", { method: options.method ?? "GET", endpoint, projectId });
+      } else {
+        previewLog("warn", "request failed", {
+          method: options.method ?? "GET", endpoint, projectId, reason: previewFailureKind(error),
+        });
+      }
+      throw error;
     }
+  };
+  try {
+    const response = await request(new URL("/bff/og-image", apiOrigin), {
+      method: "POST",
+      body: JSON.stringify({ url: target.href, projectId }),
+    });
+    let payload;
+    try { payload = await response.json(); }
+    catch (error) {
+      previewLog("warn", "response payload unavailable", { status: response.status, reason: "invalid-json" });
+      if (response.status !== 200 && response.status !== 202) throw new Error("Link preview unavailable.");
+      throw error;
+    }
+    previewLog(response.status >= 400 ? "warn" : "info", "response received", {
+      httpStatus: response.status, ...previewSummary(payload),
+    });
+    if (response.status !== 200 && response.status !== 202) {
+      throw new Error("Link preview unavailable.");
+    }
+    if (response.status === 200) {
+      if (![undefined, "ready", "failed"].includes(payload?.status)) {
+        previewLog("warn", "terminal response invalid", { reason: "unknown-status", ...previewSummary(payload) });
+        return null;
+      }
+      const image = validatedImage(payload?.image);
+      if (!image) previewLog("info", "terminal response has no usable image", previewSummary(payload));
+      return image;
+    }
+
+    const previewId = payload?.previewId;
+    if (payload?.status !== "pending" || typeof previewId !== "string" ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(previewId)) {
+      previewLog("warn", "pending response invalid", { reason: "invalid-preview-id-or-state", ...previewSummary(payload) });
+      return null;
+    }
+    // Construct the poll URL from trusted configuration and the validated ID;
+    // never follow a server-provided URL that could redirect credentials.
+    const statusUrl = new URL(
+      `/bff/projects/${encodeURIComponent(projectId)}/previews/${encodeURIComponent(previewId)}`,
+      apiOrigin,
+    );
+    const fallbackImage = payload.source === "favicon" ? validatedImage(payload.image) : null;
+    let retryAfter = Number(response.headers.get("Retry-After"));
+    if (!Number.isFinite(retryAfter) || retryAfter <= 0) retryAfter = 3;
+    let delayMs = Math.min(previewTimeoutMs, Math.max(1000, retryAfter * 1000));
+    let pollCount = 0;
+
+    while (Date.now() < deadline) {
+      previewLog("info", "poll waiting", { poll: pollCount + 1, delayMs });
+      await waitForPreview(Math.min(delayMs, deadline - Date.now()), signal);
+      if (Date.now() >= deadline) break;
+      pollCount++;
+      const pollResponse = await request(statusUrl, { method: "GET" });
+      try { payload = await pollResponse.json(); }
+      catch (error) {
+        previewLog("warn", "poll payload unavailable", { poll: pollCount, status: pollResponse.status, reason: "invalid-json" });
+        if (pollResponse.status !== 200 && pollResponse.status !== 202) throw new Error("Link preview unavailable.");
+        throw error;
+      }
+      previewLog(pollResponse.status >= 400 ? "warn" : "info", "poll response received", {
+        poll: pollCount, httpStatus: pollResponse.status, ...previewSummary(payload),
+      });
+      if (pollResponse.status !== 200 && pollResponse.status !== 202) throw new Error("Link preview unavailable.");
+      if (payload?.status === "ready") {
+        const image = validatedImage(payload.image);
+        if (!image) previewLog("warn", "terminal response has no usable image", previewSummary(payload));
+        return image;
+      }
+      if (payload?.status === "failed") {
+        const image = validatedImage(payload.image) ?? fallbackImage;
+        if (!image) previewLog("info", "terminal response has no usable image", previewSummary(payload));
+        return image;
+      }
+      if (payload?.status !== "pending") {
+        previewLog("warn", "poll response invalid", { poll: pollCount, reason: "unknown-status", ...previewSummary(payload) });
+        return null;
+      }
+      if (payload.previewId !== undefined && payload.previewId !== previewId) {
+        previewLog("warn", "poll response invalid", { poll: pollCount, reason: "preview-id-mismatch" });
+        return null;
+      }
+      const nextRetry = Number(pollResponse.headers.get("Retry-After"));
+      if (Number.isFinite(nextRetry) && nextRetry > 0) {
+        delayMs = Math.min(previewTimeoutMs, Math.max(1000, nextRetry * 1000));
+      }
+    }
+    previewLog("warn", "lookup timed out", { timeoutMs: previewTimeoutMs, polls: pollCount });
+    throw new Error("Link preview unavailable.");
+  } catch (error) {
+    if (signal?.aborted || error?.name === "AbortError") {
+      previewLog("info", "lookup cancelled");
+    } else if (error?.message !== "Link preview unavailable.") {
+      previewLog("warn", "lookup failed", { reason: previewFailureKind(error) });
+    }
+    throw error;
   }
-  throw new Error("Link preview unavailable.");
 }
 
 export async function fetchMessages(fetcher = fetch, { boardId, messageId } = {}) {

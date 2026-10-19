@@ -50,6 +50,37 @@ test("does not add embeds for non-watch links, invalid IDs, or lookalike hosts",
   }
 });
 
+test("marks direct Imgur PNGs for inline rendering and preserves mixed message order", () => {
+  const text = "Before https://i.imgur.com/Bh2omK9.png, then https://example.com/path and https://i.imgur.com/AbC9.PNG?width=640#image after.";
+  const parts = parseMessageText(text);
+  assert.equal(parts.map(part => part.text).join(""), text);
+  assert.deepEqual(parts.filter(part => part.imgurImage).map(part => part.imgurImage), [
+    "https://i.imgur.com/Bh2omK9.png",
+    "https://i.imgur.com/AbC9.PNG?width=640#image",
+  ]);
+  assert.deepEqual(parts.filter(part => part.href && !part.imgurImage).map(part => part.text), [
+    "https://example.com/path",
+  ]);
+
+  const bare = parseMessageText("i.imgur.com/Bh2omK9.png?width=320").find(part => part.href);
+  assert.equal(bare.imgurImage, "https://i.imgur.com/Bh2omK9.png?width=320");
+});
+
+test("leaves non-PNG Imgur links and lookalike hosts as ordinary links", () => {
+  for (const text of [
+    "https://i.imgur.com/Bh2omK9.jpg",
+    "https://i.imgur.com/a/gallery/Bh2omK9.png",
+    "https://imgur.com/Bh2omK9.png",
+    "https://i.imgur.com.evil.example/Bh2omK9.png",
+    "https://evil-i.imgur.com/Bh2omK9.png",
+  ]) {
+    const parts = parseMessageText(text);
+    assert.equal(parts.map(part => part.text).join(""), text);
+    assert.ok(parts.some(part => part.href), text);
+    assert.ok(parts.every(part => !part.imgurImage), text);
+  }
+});
+
 test("leaves surrounding punctuation outside links and preserves balanced URL brackets", () => {
   for (const [text, expected] of [
     ["(https://example.com/path).", "https://example.com/path"],

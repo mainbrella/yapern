@@ -13,19 +13,40 @@ export function isSession(value) {
 
 export function storeSession(session) {
   memorySession = session;
+  let persisted = false;
   try {
-    if (session) window.sessionStorage.setItem(storageKey, JSON.stringify(session));
+    // Persist null too so an older tab cannot restore its legacy session after logout.
+    window.localStorage.setItem(storageKey, JSON.stringify(session));
+    persisted = true;
+  } catch { /* Fall back to tab storage or memory when persistence is blocked. */ }
+  try {
+    if (session && !persisted) window.sessionStorage.setItem(storageKey, JSON.stringify(session));
     else window.sessionStorage.removeItem(storageKey);
-  } catch {
-    // Like the BFF example, retain the current page's session if storage is blocked.
-  }
+  } catch { /* Retain the current page's session if all storage is blocked. */ }
 }
 
 export function readStoredSession() {
   let value = memorySession;
-  try { value = JSON.parse(window.sessionStorage.getItem(storageKey) || "null"); }
-  catch { /* Storage may be blocked or malformed. */ }
-  if (isSession(value) && Date.parse(value.session.expires_at) > Date.now()) return value;
+  let stored;
+  let legacy = false;
+  try { stored = window.localStorage.getItem(storageKey); }
+  catch { /* Storage may be blocked. */ }
+  if (stored == null) {
+    try {
+      stored = window.sessionStorage.getItem(storageKey);
+      legacy = stored != null;
+    } catch { /* Storage may be blocked. */ }
+  }
+  if (stored != null) {
+    try { value = JSON.parse(stored); }
+    catch { value = null; }
+  }
+  if (stored == null && !value) return null;
+  if (isSession(value) && Date.parse(value.session.expires_at) > Date.now()) {
+    memorySession = value;
+    if (legacy) storeSession(value);
+    return value;
+  }
   storeSession(null);
   return null;
 }

@@ -1,4 +1,4 @@
-import { createAuthClient } from "./auth.js";
+import { createAuthClient, readStoredSession } from "./auth.js";
 
 const auth = createAuthClient();
 const page = document.querySelector(".login-content");
@@ -75,6 +75,7 @@ try {
   session = await auth.readSession();
   showState();
 } catch (cause) {
+  session = readStoredSession();
   showState();
   showError(cause);
 } finally {

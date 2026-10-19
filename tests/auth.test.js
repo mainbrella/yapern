@@ -79,3 +79,116 @@ test("auth reports useful errors and retains the session when logout fails", asy
   await assert.rejects(auth.signOut());
   assert.deepEqual(readStoredSession(), saved);
 });
+
+const storageKey = `yapern-session:${messageBoardConfig.projectId}`;
+let moduleId = 0;
+const freshAuth = () => import(`../src/auth.js?storage-test=${++moduleId}`);
+
+function storage() {
+  const entries = new Map();
+  return {
+    getItem: key => entries.get(key) ?? null,
+    setItem: (key, value) => entries.set(key, String(value)),
+    removeItem: key => entries.delete(key),
+  };
+}
+
+function browser(t, localStorage = storage(), sessionStorage = storage()) {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const window = { localStorage, sessionStorage };
+  Object.defineProperty(globalThis, "window", { configurable: true, value: window });
+  t.after(() => {
+    if (previous) Object.defineProperty(globalThis, "window", previous);
+    else delete globalThis.window;
+  });
+  return window;
+}
+
+test("sessions survive page reloads, new tabs, and browser restarts using persistent storage", async t => {
+  const window = browser(t);
+  const saved = session();
+  (await freshAuth()).storeSession(saved);
+  assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), saved);
+  assert.equal(window.sessionStorage.getItem(storageKey), null);
+  assert.deepEqual((await freshAuth()).readStoredSession(), saved);
+  window.sessionStorage = storage(); // A new tab/browser session has empty tab storage.
+  assert.deepEqual((await freshAuth()).readStoredSession(), saved);
+});
+
+test("existing tab sessions migrate without extending their expiry", async t => {
+  const window = browser(t);
+  const saved = session();
+  window.sessionStorage.setItem(storageKey, JSON.stringify(saved));
+  assert.deepEqual((await freshAuth()).readStoredSession(), saved);
+  assert.deepEqual(JSON.parse(window.localStorage.getItem(storageKey)), saved);
+  assert.equal(window.sessionStorage.getItem(storageKey), null);
+});
+
+test("visiting in an empty tab does not prevent migration from a signed-in tab", async t => {
+  const window = browser(t);
+  assert.equal((await freshAuth()).readStoredSession(), null);
+  assert.equal(window.localStorage.getItem(storageKey), null);
+  const saved = session();
+  window.sessionStorage.setItem(storageKey, JSON.stringify(saved));
+  assert.deepEqual((await freshAuth()).readStoredSession(), saved);
+});
+
+test("logout propagates to other tabs and prevents old tab sessions from returning", async t => {
+  const window = browser(t);
+  const firstTab = await freshAuth();
+  const otherTab = await freshAuth();
+  const saved = session();
+  firstTab.storeSession(saved);
+  assert.deepEqual(otherTab.readStoredSession(), saved);
+  await firstTab.createAuthClient(async () => Response.json({ revoked: true })).signOut();
+  window.sessionStorage.setItem(storageKey, JSON.stringify(saved)); // An unmigrated older tab.
+  assert.equal(otherTab.readStoredSession(), null);
+  assert.equal(window.sessionStorage.getItem(storageKey), null);
+  assert.equal((await freshAuth()).readStoredSession(), null);
+});
+
+test("malformed and expired persistent sessions are discarded", async t => {
+  const window = browser(t);
+  const expired = session();
+  expired.session.expires_at = "2000-01-01";
+  for (const value of ["invalid json", "{}", JSON.stringify(expired)]) {
+    window.localStorage.setItem(storageKey, value);
+    assert.equal((await freshAuth()).readStoredSession(), null);
+    assert.equal(window.localStorage.getItem(storageKey), "null");
+  }
+});
+
+test("blocked persistent storage falls back to tab storage, then memory", async t => {
+  const blocked = {
+    getItem() { throw new Error("Storage blocked"); },
+    setItem() { throw new Error("Storage blocked"); },
+    removeItem() { throw new Error("Storage blocked"); },
+  };
+  const window = browser(t, blocked);
+  const saved = session();
+  (await freshAuth()).storeSession(saved);
+  assert.deepEqual((await freshAuth()).readStoredSession(), saved);
+  window.sessionStorage = blocked;
+  const auth = await freshAuth();
+  auth.storeSession(saved);
+  assert.deepEqual(auth.readStoredSession(), saved);
+  auth.storeSession(null);
+  assert.equal(auth.readStoredSession(), null);
+});
+
+test("temporary session-check failures preserve the persistent login", async t => {
+  browser(t);
+  const saved = session();
+  const auth = await freshAuth();
+  auth.storeSession(saved);
+  for (const fetcher of [
+    async () => { throw new TypeError("offline"); },
+    async () => new Response(null, { status: 502 }),
+    async () => new Response(null, { status: 503 }),
+    async () => new Response("invalid json"),
+    async () => Response.json({}),
+  ]) {
+    await assert.rejects(auth.createAuthClient(fetcher).readSession());
+    assert.deepEqual((await freshAuth()).readStoredSession(), saved);
+  }
+});

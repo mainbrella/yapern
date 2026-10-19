@@ -18,9 +18,12 @@ creates a real project account through BFF, using
 `/bff/data/<projectId>/auth/email`. Session checks and sign-out use
 `/bff/data/<projectId>/auth/session` (GET/DELETE). This uses the same `bff_us_`
 bearer sessions as `../mb`, rather than Mainbrella owner accounts or Alice/Bob
-demo login. The token lives in sessionStorage for the current tab, expires after
-one hour, and is sent with the public `apikey` on board requests. Passwords are
-sent only to BFF and never stored in the browser.
+demo login. The token lives in localStorage so it survives new tabs and browser
+restarts, expires after 30 days, and is sent with the public `apikey` on board
+requests. Existing tab sessions migrate automatically, keeping their original
+expiry. Deploy the updated backend before relying on the longer lifetime; it
+applies to new email logins. Temporary network/server errors retain the session.
+Passwords are sent only to BFF and never stored in the browser.
 
 When signed in, the header's **Account** button opens `/account/`. The account
 page reads the current user's `id,name` from the existing `users` table and

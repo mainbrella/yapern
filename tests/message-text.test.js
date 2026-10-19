@@ -50,34 +50,47 @@ test("does not add embeds for non-watch links, invalid IDs, or lookalike hosts",
   }
 });
 
-test("marks direct Imgur PNGs for inline rendering and preserves mixed message order", () => {
-  const text = "Before https://i.imgur.com/Bh2omK9.png, then https://example.com/path and https://i.imgur.com/AbC9.PNG?width=640#image after.";
+test("marks direct image URLs for inline rendering and preserves mixed message order", () => {
+  const text = "Before https://images.example/Bh2omK9.png, then https://example.com/path and http://cdn.example/a/AbC9.GIF?width=640#image after.";
   const parts = parseMessageText(text);
   assert.equal(parts.map(part => part.text).join(""), text);
-  assert.deepEqual(parts.filter(part => part.imgurImage).map(part => part.imgurImage), [
-    "https://i.imgur.com/Bh2omK9.png",
-    "https://i.imgur.com/AbC9.PNG?width=640#image",
+  assert.deepEqual(parts.filter(part => part.imageUrl).map(part => part.imageUrl), [
+    "https://images.example/Bh2omK9.png",
+    "http://cdn.example/a/AbC9.GIF?width=640#image",
   ]);
-  assert.deepEqual(parts.filter(part => part.href && !part.imgurImage).map(part => part.text), [
+  assert.deepEqual(parts.filter(part => part.href && !part.imageUrl).map(part => part.text), [
     "https://example.com/path",
   ]);
 
-  const bare = parseMessageText("i.imgur.com/Bh2omK9.png?width=320").find(part => part.href);
-  assert.equal(bare.imgurImage, "https://i.imgur.com/Bh2omK9.png?width=320");
+  const bare = parseMessageText("cdn.example/a/Bh2omK9.webp?width=320#preview").find(part => part.href);
+  assert.equal(bare.imageUrl, "https://cdn.example/a/Bh2omK9.webp?width=320#preview");
 });
 
-test("leaves non-PNG Imgur links and lookalike hosts as ordinary links", () => {
+test("marks every supported image extension on any host, including nested paths", () => {
+  for (const [text, expected] of [
+    ["https://files.example/photo.png", "https://files.example/photo.png"],
+    ["http://cdn.example/a/animation.GIF?size=large", "http://cdn.example/a/animation.GIF?size=large"],
+    ["https://images.example/photos/photo.jpg#full", "https://images.example/photos/photo.jpg#full"],
+    ["media.example/photos/photo.webp", "https://media.example/photos/photo.webp"],
+    ["i.imgur.com/Bh2omK9.png", "https://i.imgur.com/Bh2omK9.png"],
+  ]) {
+    const part = parseMessageText(text).find(part => part.href);
+    assert.equal(part.imageUrl, expected, text);
+  }
+});
+
+test("leaves unsupported or nonterminal image extensions as ordinary links", () => {
   for (const text of [
-    "https://i.imgur.com/Bh2omK9.jpg",
-    "https://i.imgur.com/a/gallery/Bh2omK9.png",
-    "https://imgur.com/Bh2omK9.png",
-    "https://i.imgur.com.evil.example/Bh2omK9.png",
-    "https://evil-i.imgur.com/Bh2omK9.png",
+    "https://i.imgur.com/Bh2omK9.jpeg",
+    "https://images.example/photo.png.html",
+    "https://images.example/photo.jpg/path",
+    "https://images.example/page?file=photo.png",
+    "https://images.example/page#photo.webp",
   ]) {
     const parts = parseMessageText(text);
     assert.equal(parts.map(part => part.text).join(""), text);
     assert.ok(parts.some(part => part.href), text);
-    assert.ok(parts.every(part => !part.imgurImage), text);
+    assert.ok(parts.every(part => !part.imageUrl), text);
   }
 });
 

@@ -41,8 +41,8 @@ export function parseMessageText(text) {
     if (youtubeHost && videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
       part.youtubeEmbed = `https://www.youtube.com/embed/${videoId}`;
     }
-    if (url.hostname.toLowerCase() === "i.imgur.com" && /^\/[A-Za-z0-9]+\.png$/i.test(url.pathname)) {
-      part.imgurImage = url.href;
+    if (/\.(?:png|gif|jpg|webp)$/i.test(url.pathname)) {
+      part.imageUrl = url.href;
     }
     parts.push(part);
     position = start + value.length;

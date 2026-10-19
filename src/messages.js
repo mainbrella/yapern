@@ -49,12 +49,12 @@ function messageRow(message, board, authors) {
   for (const part of parseMessageText(message.body)) {
     if (part.youtubeEmbed) {
       youtubeParts.push(part);
-    } else if (part.imgurImage) {
+    } else if (part.imageUrl) {
       const image = document.createElement("img");
       image.className = "live-message-image";
       image.referrerPolicy = "no-referrer";
-      image.src = part.imgurImage;
-      image.alt = "Image shared via Imgur";
+      image.src = part.imageUrl;
+      image.alt = "Shared image";
       image.loading = "lazy";
       image.decoding = "async";
       body.append(image);

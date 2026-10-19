@@ -57,7 +57,14 @@ function messageRow(message, board, authors) {
       image.alt = "Shared image";
       image.loading = "lazy";
       image.decoding = "async";
-      body.append(image);
+      if (board) {
+        const link = document.createElement("a");
+        link.href = messageHref(board.slug, message.id);
+        link.append(image);
+        body.append(link);
+      } else {
+        body.append(image);
+      }
     } else if (part.href) {
       const link = document.createElement("a");
       link.href = part.href;

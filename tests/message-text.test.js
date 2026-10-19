@@ -21,20 +21,20 @@ test("makes bare domains and www addresses usable with HTTPS", () => {
   ]);
 });
 
-test("adds thumbnails for YouTube watch links with valid video IDs", () => {
+test("adds embeds for YouTube watch links with valid video IDs", () => {
   const text = "https://www.youtube.com/watch?v=issziaa-dtY&t=45s and m.youtube.com/watch?t=45s&v=Abc_123-xYz";
   const parts = parseMessageText(text);
   assert.equal(parts.map(part => part.text).join(""), text);
-  assert.deepEqual(parts.filter(part => part.youtubeThumbnail).map(part => part.youtubeThumbnail), [
-    "https://img.youtube.com/vi/issziaa-dtY/maxresdefault.jpg",
-    "https://img.youtube.com/vi/Abc_123-xYz/maxresdefault.jpg",
+  assert.deepEqual(parts.filter(part => part.youtubeEmbed).map(part => part.youtubeEmbed), [
+    "https://www.youtube.com/embed/issziaa-dtY",
+    "https://www.youtube.com/embed/Abc_123-xYz",
   ]);
 
   const bare = parseMessageText("youtube.com/watch?v=issziaa-dtY").find(part => part.href);
-  assert.equal(bare.youtubeThumbnail, "https://img.youtube.com/vi/issziaa-dtY/maxresdefault.jpg");
+  assert.equal(bare.youtubeEmbed, "https://www.youtube.com/embed/issziaa-dtY");
 });
 
-test("does not add thumbnails for non-watch links, invalid IDs, or lookalike hosts", () => {
+test("does not add embeds for non-watch links, invalid IDs, or lookalike hosts", () => {
   for (const text of [
     "https://youtube.com/shorts/issziaa-dtY",
     "https://youtube.com/watch?v=too-short",
@@ -46,7 +46,7 @@ test("does not add thumbnails for non-watch links, invalid IDs, or lookalike hos
   ]) {
     const parts = parseMessageText(text);
     assert.equal(parts.map(part => part.text).join(""), text);
-    assert.ok(parts.every(part => !part.youtubeThumbnail), text);
+    assert.ok(parts.every(part => !part.youtubeEmbed), text);
   }
 });
 

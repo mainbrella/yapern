@@ -1263,15 +1263,13 @@ a.detail-recent-post:hover .detail-recent-title {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-.live-message-video-preview {
+.live-message-video {
   display: block;
-  width: min(100%, 480px);
-  margin-top: 8px;
-}
-.live-message-video-preview img {
-  display: block;
-  width: 100%;
+  width: min(100%, 560px);
   height: auto;
+  aspect-ratio: 16 / 9;
+  margin-top: 8px;
+  border: 0;
 }
 .community-section {
   display: grid;

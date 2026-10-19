@@ -51,28 +51,25 @@ function messageRow(message, board, authors) {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       body.append(link);
-      if (part.youtubeThumbnail) youtubeParts.push(part);
+      if (part.youtubeEmbed) youtubeParts.push(part);
     } else {
       body.append(document.createTextNode(part.text));
     }
   }
   article.append(meta, title, body);
   for (const part of youtubeParts) {
-    const preview = document.createElement("a");
-    preview.className = "live-message-video-preview";
-    preview.href = part.href;
-    preview.target = "_blank";
-    preview.rel = "noopener noreferrer";
-    const image = document.createElement("img");
-    image.src = part.youtubeThumbnail;
-    image.alt = "YouTube video thumbnail";
-    image.width = 1280;
-    image.height = 720;
-    image.loading = "lazy";
-    image.decoding = "async";
-    image.addEventListener("error", () => preview.remove(), { once: true });
-    preview.append(image);
-    article.append(preview);
+    const video = document.createElement("iframe");
+    video.className = "live-message-video";
+    video.width = 560;
+    video.height = 315;
+    video.src = part.youtubeEmbed;
+    video.title = "YouTube video player";
+    video.setAttribute("frameborder", "0");
+    video.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share");
+    video.referrerPolicy = "strict-origin-when-cross-origin";
+    video.allowFullscreen = true;
+    video.loading = "lazy";
+    article.append(video);
   }
   item.append(article);
   return item;

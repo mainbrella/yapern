@@ -39,7 +39,7 @@ export function parseMessageText(text) {
     const youtubeHost = ["youtube.com", "www.youtube.com", "m.youtube.com"].includes(url.hostname.toLowerCase());
     const videoId = url.pathname === "/watch" ? url.searchParams.get("v") : null;
     if (youtubeHost && videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
-      part.youtubeThumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      part.youtubeEmbed = `https://www.youtube.com/embed/${videoId}`;
     }
     parts.push(part);
     position = start + value.length;

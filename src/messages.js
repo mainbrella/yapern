@@ -1,6 +1,7 @@
 import { fetchMessages, fetchBoards, fetchBoardPage, fetchMessageAuthors } from "./messages-api.js";
 import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
 import { mountBoardSidebars } from "./board-sidebars.js";
+import { parseMessageText } from "./message-text.js";
 
 const list = document.querySelector("#live-messages");
 const status = document.querySelector("#messages-status");
@@ -41,7 +42,18 @@ function messageRow(message, board, authors) {
   meta.append(author, document.createTextNode(" · "), date);
   const body = document.createElement("p");
   body.className = "live-message-body";
-  body.textContent = message.body;
+  for (const part of parseMessageText(message.body)) {
+    if (part.href) {
+      const link = document.createElement("a");
+      link.href = part.href;
+      link.textContent = part.text;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      body.append(link);
+    } else {
+      body.append(document.createTextNode(part.text));
+    }
+  }
   article.append(meta, title, body);
   item.append(article);
   return item;

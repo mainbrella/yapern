@@ -392,6 +392,7 @@ button.create-toolbar-icon:focus-visible { outline-offset: 1px; }
 .create-toolbar-icon svg circle { fill: currentColor; stroke: none; }
 .create-toolbar-letter { font-family: ui-sans-serif, system-ui, sans-serif; }
 .create-toolbar-heading { font-size: 17px; font-weight: 700; }
+.create-toolbar-quote { font-family: Georgia, serif; font-size: 24px; font-weight: 700; letter-spacing: -3px; }
 .create-toolbar-divider { width: 1px; height: 22px; margin-inline: 5px; background: #3b435a; }
 .create-field { display: grid; gap: 8px; min-width: 0; color: var(--muted); font-size: 13px; font-weight: 600; }
 .create-field input,
@@ -1256,6 +1257,11 @@ a.detail-recent-post:hover .detail-recent-title {
   line-height: 1.65;
   color: var(--muted);
   white-space: pre-wrap;
+}
+.live-message-body a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .community-section {
   display: grid;

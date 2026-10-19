@@ -36,12 +36,12 @@ let linkTouched = false;
 
 function linkUrlError() {
   const value = linkUrl.value.trim();
-  if (!value) return "Enter a link URL.";
+  if (!/^https?:\/\//i.test(value)) return "Enter a full URL starting with http:// or https://.";
   try {
     const parsed = new URL(value);
     if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname) return "";
   } catch {}
-  return "Use a valid HTTP or HTTPS link.";
+  return "Enter a full URL starting with http:// or https://.";
 }
 
 function serializedMessageBody() {
@@ -144,9 +144,6 @@ function updateForms() {
 messageForm.addEventListener("input", updateForms);
 linkToggle.addEventListener("click", () => setLinkPanelOpen(true));
 linkRemove.addEventListener("click", () => setLinkPanelOpen(false));
-linkUrl.addEventListener("input", () => {
-  if (linkTouched) syncLinkValidation();
-});
 linkUrl.addEventListener("blur", () => {
   linkTouched = true;
   syncLinkValidation();

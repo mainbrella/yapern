@@ -1,0 +1,43 @@
+// Web equivalent of Groupicorn's MessageLinkParser: preserve the text and
+// make detected web addresses clickable, allowing only HTTP and HTTPS.
+const linkPattern = /[a-z][a-z\d+.-]*:\/\/[^\s<>"'`“”‘’]+|(?:[\p{L}\p{N}](?:[\p{L}\p{N}-]*[\p{L}\p{N}])?\.)+[\p{L}]{2,63}(?![\p{L}\p{N}_-])(?::\d+)?(?:[/?#][^\s<>"'`“”‘’]*)?/giu;
+
+function trimLink(candidate) {
+  const brackets = { ")": "(", "]": "[", "}": "{" };
+  let value = candidate;
+  while (value) {
+    const last = value.at(-1);
+    if (/[.,!?;:]/.test(last)) {
+      value = value.slice(0, -1);
+    } else if (brackets[last] && value.split(last).length > value.split(brackets[last]).length) {
+      // Keep balanced parentheses in URLs, but leave prose punctuation outside.
+      value = value.slice(0, -1);
+    } else {
+      break;
+    }
+  }
+  return value;
+}
+
+export function parseMessageText(text) {
+  const parts = [];
+  let position = 0;
+  for (const match of text.matchAll(linkPattern)) {
+    const start = match.index;
+    // Avoid matching inside email addresses, paths, or another URL scheme.
+    if (start > 0 && /[\p{L}\p{N}_@./\\:+-]/u.test(text[start - 1])) continue;
+    const value = trimLink(match[0]);
+    let url;
+    try {
+      url = new URL(/^[a-z][a-z\d+.-]*:\/\//i.test(value) ? value : `https://${value}`);
+    } catch {
+      continue;
+    }
+    if (!url.hostname || !["http:", "https:"].includes(url.protocol)) continue;
+    if (start > position) parts.push({ text: text.slice(position, start) });
+    parts.push({ text: value, href: url.href });
+    position = start + value.length;
+  }
+  if (position < text.length) parts.push({ text: text.slice(position) });
+  return parts;
+}

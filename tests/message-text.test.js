@@ -1,6 +1,41 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseMessageText } from "../src/message-text.js";
+import { parseMessageText, serializeMessageBody } from "../src/message-text.js";
+
+test("saves the preview first while retaining the original link and message", () => {
+  const url = "https://example.com/article#section";
+  const image = "https://cdn.example/preview.jpg";
+  assert.equal(serializeMessageBody("  My thoughts\n\nMore text  ", ` ${url} `, image),
+    `${image}\n${url}\n\nMy thoughts\n\nMore text`);
+  assert.equal(serializeMessageBody("", url, image), `${image}\n${url}`);
+  assert.equal(serializeMessageBody("My thoughts", url), `${url}\n\nMy thoughts`);
+  assert.equal(serializeMessageBody("", url), url);
+});
+
+test("recognizes a saved preview line without consuming the remaining body", () => {
+  for (const image of ["https://cdn.example/preview", "https://example.com/favicon.ico", "https://cdn.example/photo.jpeg"]) {
+    const text = serializeMessageBody("First paragraph\n\nLast paragraph", "https://example.com/article", image);
+    const [preview, ...body] = parseMessageText(text);
+    assert.equal(preview.imageUrl, image);
+    assert.equal(preview.text, image);
+    assert.equal(body.map(part => part.text).join(""), "\nhttps://example.com/article\n\nFirst paragraph\n\nLast paragraph");
+    assert.ok(body.filter(part => part.href).every(part => !part.imageUrl));
+  }
+});
+
+test("only tries extensionless preview URLs on a standalone first line and preserves YouTube embeds", () => {
+  for (const text of [
+    "Read https://example.com/article\nMore text",
+    "https://example.com/article is useful\nMore text",
+    "Before\nhttps://example.com/article\nMore text",
+    "https://example.com/article",
+  ]) {
+    assert.ok(parseMessageText(text).every(part => !part.imageUrl), text);
+  }
+  const [youtube] = parseMessageText("https://www.youtube.com/watch?v=issziaa-dtY\nMore text");
+  assert.ok(youtube.youtubeEmbed);
+  assert.equal(youtube.imageUrl, undefined);
+});
 
 test("detects HTTP and HTTPS links without changing message text or whitespace", () => {
   const text = "👋 See HTTPS://example.com/a?x=1&y=2#section\n\n  and http://example.org:8080/path.";
@@ -71,6 +106,7 @@ test("marks every supported image extension on any host, including nested paths"
     ["https://files.example/photo.png", "https://files.example/photo.png"],
     ["http://cdn.example/a/animation.GIF?size=large", "http://cdn.example/a/animation.GIF?size=large"],
     ["https://images.example/photos/photo.jpg#full", "https://images.example/photos/photo.jpg#full"],
+    ["https://images.example/photos/photo.JPEG", "https://images.example/photos/photo.JPEG"],
     ["media.example/photos/photo.webp", "https://media.example/photos/photo.webp"],
     ["i.imgur.com/Bh2omK9.png", "https://i.imgur.com/Bh2omK9.png"],
   ]) {
@@ -81,7 +117,6 @@ test("marks every supported image extension on any host, including nested paths"
 
 test("leaves unsupported or nonterminal image extensions as ordinary links", () => {
   for (const text of [
-    "https://i.imgur.com/Bh2omK9.jpeg",
     "https://images.example/photo.png.html",
     "https://images.example/photo.jpg/path",
     "https://images.example/page?file=photo.png",

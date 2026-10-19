@@ -55,9 +55,12 @@ Both submit directly to BFF with the current session, preserve input on errors,
 and open the created board or message after the API confirms the saved row.
 In the message dialog, adding a link also requests an optional image preview
 from `POST /bff/og-image` with the existing project login. Lookup or image-load
-failures do not block posting. When lookup succeeds, the fetched image URL is
-saved as the first line of the message body, followed by the entered text; the
-message schema does not change. If metadata has no image, BFF queues a browser
+failures do not prevent posting. Posting waits for the current lookup to finish.
+When lookup succeeds, the fetched image URL is saved as the first line of the
+message body, followed by the original link and entered text. Displaying the
+message replaces the first line with the image and preserves the remaining body;
+an image that fails to load falls back to a clickable link. The message schema
+does not change. If metadata has no image, BFF queues a browser
 screenshot and the page polls its authenticated preview status for up to about
 one minute. The pending favicon is only used if screenshot generation fails;
 closing the dialog or changing the link cancels the lookup. Screenshot previews

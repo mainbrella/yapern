@@ -20,6 +20,15 @@ function syncDeleteAction() {
   if (button) button.hidden = readStoredSession()?.session.user_id !== button.dataset.authorId;
 }
 
+function messageTextLink(part) {
+  const link = document.createElement("a");
+  link.href = externalLinkHref(part.href, window.location.origin);
+  link.textContent = part.text;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  return link;
+}
+
 function messageRow(message, board, authors) {
   const item = document.createElement("li");
   const article = document.createElement("article");
@@ -64,21 +73,17 @@ function messageRow(message, board, authors) {
       image.alt = "Shared image";
       image.loading = "lazy";
       image.decoding = "async";
+      let imageContainer = image;
       if (board) {
         const link = document.createElement("a");
         link.href = messageHref(board.slug, message.id);
         link.append(image);
-        body.append(link);
-      } else {
-        body.append(image);
+        imageContainer = link;
       }
+      image.addEventListener("error", () => imageContainer.replaceWith(messageTextLink(part)), { once: true });
+      body.append(imageContainer);
     } else if (part.href) {
-      const link = document.createElement("a");
-      link.href = externalLinkHref(part.href, window.location.origin);
-      link.textContent = part.text;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      body.append(link);
+      body.append(messageTextLink(part));
     } else {
       body.append(document.createTextNode(part.text));
     }

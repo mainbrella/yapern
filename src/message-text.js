@@ -19,8 +19,16 @@ function trimLink(candidate) {
   return value;
 }
 
+export function serializeMessageBody(text, linkUrl, imageUrl = "") {
+  const url = linkUrl.trim();
+  const body = text.trim();
+  const linkedBody = url ? (body ? `${url}\n\n${body}` : url) : body;
+  return imageUrl ? `${imageUrl}\n${linkedBody}` : linkedBody;
+}
+
 export function parseMessageText(text) {
   const parts = [];
+  const firstLineEnd = text.indexOf("\n");
   let position = 0;
   for (const match of text.matchAll(linkPattern)) {
     const start = match.index;
@@ -41,7 +49,12 @@ export function parseMessageText(text) {
     if (youtubeHost && videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
       part.youtubeEmbed = `https://www.youtube.com/embed/${videoId}`;
     }
-    if (/\.(?:png|gif|jpg|webp)$/i.test(url.pathname)) {
+    // Fetched previews can use extensionless CDN URLs or favicon URLs. A
+    // standalone first line is an image candidate; the renderer restores the
+    // text link if it cannot load as an image.
+    const isPreviewLine = start === 0 && firstLineEnd >= 0 &&
+      value === text.slice(0, firstLineEnd).trimEnd() && /^https?:\/\//i.test(value);
+    if (!part.youtubeEmbed && (/\.(?:png|gif|jpe?g|webp)$/i.test(url.pathname) || isPreviewLine)) {
       part.imageUrl = url.href;
     }
     parts.push(part);

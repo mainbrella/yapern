@@ -2,6 +2,7 @@ import { readStoredSession } from "./auth.js";
 import { closeHeaderMenu } from "./auth-nav.js";
 import { fetchBoards, createBoard, createMessage, fetchOgImage } from "./messages-api.js";
 import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
+import { serializeMessageBody } from "./message-text.js";
 
 const menu = document.querySelector("#create-menu");
 const toggle = document.querySelector("#create-toggle");
@@ -38,6 +39,7 @@ let linkTouched = false;
 let linkPreviewTimer;
 let linkPreviewController;
 let linkPreviewLookupPending = false;
+let linkPreviewPromise = null;
 let linkPreviewUrl = "";
 let fetchedImageUrl = "";
 
@@ -68,6 +70,7 @@ function clearLinkPreview() {
   linkPreviewController?.abort();
   linkPreviewController = null;
   linkPreviewLookupPending = false;
+  linkPreviewPromise = null;
   if (cancelled) logLinkPreview("info", "lookup cancelled", { reason: "link-changed-or-dialog-closed" });
   linkPreviewUrl = "";
   fetchedImageUrl = "";
@@ -101,9 +104,18 @@ function scheduleLinkPreview() {
   logLinkPreview("info", "lookup scheduled", { debounceMs: 400 });
   linkPreviewLoading.hidden = false;
   linkPreview.setAttribute("aria-busy", "true");
-  linkPreviewTimer = setTimeout(async () => {
-    linkPreviewTimer = undefined;
-    linkPreviewLookupPending = true;
+  linkPreviewTimer = setTimeout(startLinkPreview, 400);
+}
+
+function startLinkPreview() {
+  clearTimeout(linkPreviewTimer);
+  linkPreviewTimer = undefined;
+  if (linkPreviewPromise) return linkPreviewPromise;
+  const controller = linkPreviewController;
+  const value = linkPreviewUrl;
+  if (!controller || controller.signal.aborted) return;
+  linkPreviewLookupPending = true;
+  linkPreviewPromise = (async () => {
     try {
       const imageUrl = await fetchOgImage(value, fetch, { signal: controller.signal });
       if (controller.signal.aborted || linkPreviewController !== controller) return;
@@ -150,15 +162,12 @@ function scheduleLinkPreview() {
     } finally {
       if (linkPreviewController === controller) linkPreviewLookupPending = false;
     }
-  }, 400);
+  })();
+  return linkPreviewPromise;
 }
 
 function serializedMessageBody() {
-  if (linkPanel.hidden) return body.value;
-  if (fetchedImageUrl) return `${fetchedImageUrl}\n${body.value}`;
-  const url = linkUrl.value.trim();
-  const text = body.value.trim();
-  return url ? (text ? `${url}\n\n${text}` : url) : text;
+  return linkPanel.hidden ? body.value : serializeMessageBody(body.value, linkUrl.value, fetchedImageUrl);
 }
 
 function syncLinkValidation() {
@@ -375,6 +384,8 @@ async function submit(event, dialog, action, pendingLabel, defaultLabel) {
 
 messageForm.addEventListener("submit", event => void submit(event, messageDialog, async () => {
   const board = boards.find(row => row.id === boardSelect.value);
+  // Finish the current lookup, including a queued debounce, before saving.
+  if (!linkPanel.hidden) await startLinkPreview();
   const message = await createMessage(board.id, title.value, serializedMessageBody());
   return messageHref(board.slug, message.id);
 }, "Posting…", "Post"));

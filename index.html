@@ -331,7 +331,18 @@
           </li>
         </ul>
       </section>
-      <section class="live-messages-section shell" aria-labelledby="messages-title">
+      <section class="live-messages-section detail-board-layout shell" aria-labelledby="messages-title">
+        <aside class="detail-board-navigation" aria-label="Board navigation">
+          <nav aria-label="Message views">
+            <a class="detail-nav-link" href="/#messages-title" aria-current="page">All messages</a>
+          </nav>
+          <details class="detail-board-menu" open>
+            <summary>Boards</summary>
+            <p id="boards-status" class="detail-sidebar-status" role="status">Loading boards…</p>
+            <ul id="board-navigation" aria-label="Boards" aria-busy="true"></ul>
+            <button id="boards-retry" class="messages-retry" type="button" hidden>Retry boards</button>
+          </details>
+        </aside>
         <div class="live-messages-feed">
           <h2 id="messages-title">Latest messages</h2>
           <p id="messages-status" class="messages-status" role="status"></p>
@@ -339,6 +350,12 @@
           <ul id="live-messages" aria-labelledby="messages-title" aria-busy="false"></ul>
           <noscript><p class="messages-status">Enable JavaScript to read the latest messages.</p></noscript>
         </div>
+        <aside class="detail-recent-posts" aria-labelledby="recent-title">
+          <h2 id="recent-title">Recent posts</h2>
+          <p id="recent-status" class="detail-sidebar-status" role="status">Loading posts…</p>
+          <ul id="recent-posts" aria-labelledby="recent-title" aria-busy="true"></ul>
+          <button id="recent-retry" class="messages-retry" type="button" hidden>Retry recent posts</button>
+        </aside>
       </section>
       <section
         class="community-section shell"

@@ -87,5 +87,5 @@ async function loadMessages() {
 
 retry.addEventListener("click", loadMessages);
 if (route) heading.textContent = `y/${route.slug}`;
-if (isBoardPage) mountBoardSidebars(route?.slug);
+mountBoardSidebars(route?.slug);
 loadMessages();

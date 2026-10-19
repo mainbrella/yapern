@@ -1,11 +1,14 @@
 import { readStoredSession } from "./auth.js";
+import { closeHeaderMenu } from "./auth-nav.js";
 import { fetchBoards, createBoard, createMessage } from "./messages-api.js";
 import { boardHref, messageHref } from "./board-routes.js";
 
 const menu = document.querySelector("#create-menu");
 const toggle = document.querySelector("#create-toggle");
 const options = document.querySelector("#create-options");
+const mobileNavigation = window.matchMedia("(max-width: 900px)");
 const items = [...options.querySelectorAll("[role=menuitem]")];
+const createActions = [...document.querySelectorAll("[data-create]")];
 const messageDialog = document.querySelector("#create-message-dialog");
 const boardDialog = document.querySelector("#create-board-dialog");
 const messageForm = document.querySelector("#create-message-form");
@@ -63,6 +66,7 @@ options.addEventListener("keydown", event => {
 });
 document.addEventListener("pointerdown", event => { if (!menu.contains(event.target)) closeMenu(); });
 menu.addEventListener("focusout", event => { if (!menu.contains(event.relatedTarget)) closeMenu(); });
+mobileNavigation.addEventListener("change", () => closeMenu());
 window.addEventListener("pageshow", syncSession);
 window.addEventListener("focus", syncSession);
 syncSession();
@@ -114,8 +118,9 @@ async function loadBoards() {
 }
 boardsRetry.addEventListener("click", loadBoards);
 
-items.forEach(item => item.addEventListener("click", () => {
-  closeMenu(true);
+createActions.forEach(item => item.addEventListener("click", () => {
+  closeMenu(false);
+  closeHeaderMenu();
   syncSession();
   if (menu.hidden) return;
   const dialog = item.dataset.create === "message" ? messageDialog : boardDialog;
@@ -135,7 +140,11 @@ for (const dialog of [messageDialog, boardDialog]) {
     if (dialog === messageDialog) boardRequest++;
     document.documentElement.style.overflow = previousOverflow;
     syncSession();
-    (menu.hidden ? document.querySelector("[data-login-link]") : toggle).focus();
+    const mobileToggle = document.querySelector("#header-toggle");
+    const focusTarget = window.matchMedia("(max-width: 900px)").matches
+      ? mobileToggle
+      : (menu.hidden ? document.querySelector("[data-login-link]") : toggle);
+    focusTarget?.focus();
   });
 }
 

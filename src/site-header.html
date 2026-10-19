@@ -5,22 +5,34 @@
           >.</span
         ></a
       >
-      <nav aria-label="Main navigation">
-        <a href="/#features">Features</a
-        ><a href="/#communities">Sub-yaps &amp; moderators</a
-        ><a href="/#open-source">Open source</a>
-      </nav>
-      <div class="header-actions">
-        <div class="create-menu" id="create-menu" hidden>
-          <button class="button button-small" id="create-toggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="create-options">
-            <span aria-hidden="true">+</span> Create <span class="create-chevron" aria-hidden="true">⌄</span>
-          </button>
-          <div class="create-options" id="create-options" role="menu" aria-labelledby="create-toggle" hidden>
-            <button type="button" role="menuitem" tabindex="-1" data-create="message">Create message</button>
-            <button type="button" role="menuitem" tabindex="-1" data-create="board">Create board</button>
+      <button class="header-toggle" id="header-toggle" type="button" aria-expanded="false" aria-controls="header-menu" aria-label="Open menu">
+        <svg class="header-toggle-open" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        <svg class="header-toggle-close" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
+      </button>
+      <div class="header-menu" id="header-menu">
+        <nav aria-label="Main navigation">
+          <a href="/#features">Features</a
+          ><a href="/#communities">Sub-yaps &amp; moderators</a
+          ><a href="/#open-source">Open source</a>
+        </nav>
+        <div class="header-actions">
+          <div class="create-menu" id="create-menu" hidden data-auth-only>
+            <button class="button button-small" id="create-toggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="create-options">
+              <svg class="header-create-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" /></svg>
+              Create
+              <svg class="header-create-chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+            </button>
+            <div class="create-options" id="create-options" role="menu" aria-labelledby="create-toggle" hidden>
+              <button type="button" role="menuitem" tabindex="-1" data-create="message"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 9.5a6.5 6.5 0 0 1-6.5 6.5H5l-2.5 2v-8.5A6.5 6.5 0 0 1 9 3h1a6.5 6.5 0 0 1 6.5 6.5Z" /><path d="M6.5 9h6M6.5 12h4" /></svg>Create message</button>
+              <button type="button" role="menuitem" tabindex="-1" data-create="board"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 7h14M7 7v10" /></svg>Create board</button>
+            </div>
           </div>
+          <div class="mobile-create-actions" role="group" aria-label="Create" data-auth-only hidden>
+            <button type="button" data-create="message"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 9.5a6.5 6.5 0 0 1-6.5 6.5H5l-2.5 2v-8.5A6.5 6.5 0 0 1 9 3h1a6.5 6.5 0 0 1 6.5 6.5Z" /><path d="M6.5 9h6M6.5 12h4" /></svg>Create message</button>
+            <button type="button" data-create="board"><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="14" height="14" rx="2" /><path d="M3 7h14M7 7v10" /></svg>Create board</button>
+          </div>
+          <a class="button button-small" href="/login/" data-login-link>Login</a>
         </div>
-        <a class="button button-small" href="/login/" data-login-link>Login</a>
       </div>
     </header>
     <dialog class="create-dialog" id="create-message-dialog" aria-labelledby="create-message-heading">

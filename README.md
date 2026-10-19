@@ -55,8 +55,9 @@ Both submit directly to BFF with the current session, preserve input on errors,
 and open the created board or message after the API confirms the saved row.
 In the message dialog, adding a link also requests an optional image preview
 from `POST /bff/og-image` with the existing project login. Lookup or image-load
-failures do not block posting; the preview exists only in the open dialog and
-does not change the message schema.
+failures do not block posting. When lookup succeeds, the fetched image URL is
+saved as the first line of the message body, followed by the entered text; the
+message schema does not change.
 
 Before publishing the login page, apply Canopy backend migration
 `056_bff_email_accounts.sql` and deploy the updated BFF API. Credentials are

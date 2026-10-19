@@ -37,6 +37,7 @@ let linkTouched = false;
 let linkPreviewTimer;
 let linkPreviewController;
 let linkPreviewUrl = "";
+let fetchedImageUrl = "";
 
 function linkUrlError() {
   const value = linkUrl.value.trim();
@@ -53,6 +54,7 @@ function clearLinkPreview() {
   linkPreviewController?.abort();
   linkPreviewController = null;
   linkPreviewUrl = "";
+  fetchedImageUrl = "";
   linkPreview.hidden = true;
   linkPreview.replaceChildren();
 }
@@ -72,6 +74,8 @@ function scheduleLinkPreview() {
     try {
       const imageUrl = await fetchOgImage(value, fetch, { signal: controller.signal });
       if (controller.signal.aborted || !imageUrl) return;
+      fetchedImageUrl = imageUrl;
+      updateForms();
       const image = document.createElement("img");
       image.alt = "Link preview";
       image.referrerPolicy = "no-referrer";
@@ -90,6 +94,7 @@ function scheduleLinkPreview() {
 
 function serializedMessageBody() {
   if (linkPanel.hidden) return body.value;
+  if (fetchedImageUrl) return `${fetchedImageUrl}\n${body.value}`;
   const url = linkUrl.value.trim();
   const text = body.value.trim();
   return url ? (text ? `${url}\n\n${text}` : url) : text;

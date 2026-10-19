@@ -21,6 +21,35 @@ test("makes bare domains and www addresses usable with HTTPS", () => {
   ]);
 });
 
+test("adds thumbnails for YouTube watch links with valid video IDs", () => {
+  const text = "https://www.youtube.com/watch?v=issziaa-dtY&t=45s and m.youtube.com/watch?t=45s&v=Abc_123-xYz";
+  const parts = parseMessageText(text);
+  assert.equal(parts.map(part => part.text).join(""), text);
+  assert.deepEqual(parts.filter(part => part.youtubeThumbnail).map(part => part.youtubeThumbnail), [
+    "https://img.youtube.com/vi/issziaa-dtY/maxresdefault.jpg",
+    "https://img.youtube.com/vi/Abc_123-xYz/maxresdefault.jpg",
+  ]);
+
+  const bare = parseMessageText("youtube.com/watch?v=issziaa-dtY").find(part => part.href);
+  assert.equal(bare.youtubeThumbnail, "https://img.youtube.com/vi/issziaa-dtY/maxresdefault.jpg");
+});
+
+test("does not add thumbnails for non-watch links, invalid IDs, or lookalike hosts", () => {
+  for (const text of [
+    "https://youtube.com/shorts/issziaa-dtY",
+    "https://youtube.com/watch?v=too-short",
+    "https://youtube.com/watch?v=issziaa-dtYextra",
+    "https://youtube.com/watch?t=45s",
+    "https://youtube.com.evil.example/watch?v=issziaa-dtY",
+    "https://evil-youtube.com/watch?v=issziaa-dtY",
+    "https://youtu.be/issziaa-dtY",
+  ]) {
+    const parts = parseMessageText(text);
+    assert.equal(parts.map(part => part.text).join(""), text);
+    assert.ok(parts.every(part => !part.youtubeThumbnail), text);
+  }
+});
+
 test("leaves surrounding punctuation outside links and preserves balanced URL brackets", () => {
   for (const [text, expected] of [
     ["(https://example.com/path).", "https://example.com/path"],

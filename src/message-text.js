@@ -35,7 +35,13 @@ export function parseMessageText(text) {
     }
     if (!url.hostname || !["http:", "https:"].includes(url.protocol)) continue;
     if (start > position) parts.push({ text: text.slice(position, start) });
-    parts.push({ text: value, href: url.href });
+    const part = { text: value, href: url.href };
+    const youtubeHost = ["youtube.com", "www.youtube.com", "m.youtube.com"].includes(url.hostname.toLowerCase());
+    const videoId = url.pathname === "/watch" ? url.searchParams.get("v") : null;
+    if (youtubeHost && videoId && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+      part.youtubeThumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    }
+    parts.push(part);
     position = start + value.length;
   }
   if (position < text.length) parts.push({ text: text.slice(position) });

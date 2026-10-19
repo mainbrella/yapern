@@ -42,6 +42,7 @@ function messageRow(message, board, authors) {
   meta.append(author, document.createTextNode(" · "), date);
   const body = document.createElement("p");
   body.className = "live-message-body";
+  const youtubeParts = [];
   for (const part of parseMessageText(message.body)) {
     if (part.href) {
       const link = document.createElement("a");
@@ -50,11 +51,29 @@ function messageRow(message, board, authors) {
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       body.append(link);
+      if (part.youtubeThumbnail) youtubeParts.push(part);
     } else {
       body.append(document.createTextNode(part.text));
     }
   }
   article.append(meta, title, body);
+  for (const part of youtubeParts) {
+    const preview = document.createElement("a");
+    preview.className = "live-message-video-preview";
+    preview.href = part.href;
+    preview.target = "_blank";
+    preview.rel = "noopener noreferrer";
+    const image = document.createElement("img");
+    image.src = part.youtubeThumbnail;
+    image.alt = "YouTube video thumbnail";
+    image.width = 1280;
+    image.height = 720;
+    image.loading = "lazy";
+    image.decoding = "async";
+    image.addEventListener("error", () => preview.remove(), { once: true });
+    preview.append(image);
+    article.append(preview);
+  }
   item.append(article);
   return item;
 }

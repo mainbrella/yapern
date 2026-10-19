@@ -44,14 +44,15 @@ function messageRow(message, board, authors) {
   body.className = "live-message-body";
   const youtubeParts = [];
   for (const part of parseMessageText(message.body)) {
-    if (part.href) {
+    if (part.youtubeEmbed) {
+      youtubeParts.push(part);
+    } else if (part.href) {
       const link = document.createElement("a");
       link.href = part.href;
       link.textContent = part.text;
       link.target = "_blank";
       link.rel = "noopener noreferrer";
       body.append(link);
-      if (part.youtubeEmbed) youtubeParts.push(part);
     } else {
       body.append(document.createTextNode(part.text));
     }

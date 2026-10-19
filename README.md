@@ -57,7 +57,12 @@ In the message dialog, adding a link also requests an optional image preview
 from `POST /bff/og-image` with the existing project login. Lookup or image-load
 failures do not block posting. When lookup succeeds, the fetched image URL is
 saved as the first line of the message body, followed by the entered text; the
-message schema does not change.
+message schema does not change. If metadata has no image, BFF queues a browser
+screenshot and the page polls its authenticated preview status for up to about
+one minute. The pending favicon is only used if screenshot generation fails;
+closing the dialog or changing the link cancels the lookup. Screenshot previews
+require backend migration `057_bff_previews.sql` and the updated BFF queue
+worker to be deployed. Screenshot preview URLs expire after 14 days.
 
 Before publishing the login page, apply Canopy backend migration
 `056_bff_email_accounts.sql` and deploy the updated BFF API. Credentials are

@@ -37,6 +37,40 @@ async function readRows(table, params, fetcher) {
   return payload.data;
 }
 
+const previewTimeoutMs = 60_000;
+const previewRequestTimeoutMs = 10_000;
+
+function validatedImage(value) {
+  if (typeof value !== "string") return null;
+  try {
+    const image = new URL(value);
+    if (["http:", "https:"].includes(image.protocol) && !image.username && !image.password) return image.href;
+  } catch {}
+  return null;
+}
+
+function waitForPreview(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const finish = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
+    };
+    const abort = () => {
+      finish();
+      reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+    };
+    const timer = setTimeout(() => {
+      finish();
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", abort, { once: true });
+  });
+}
+
 export async function fetchOgImage(value, fetcher = fetch, { signal } = {}) {
   const session = readStoredSession();
   if (!session) return null;
@@ -46,20 +80,66 @@ export async function fetchOgImage(value, fetcher = fetch, { signal } = {}) {
     if (!["http:", "https:"].includes(target.protocol) || target.username || target.password) return null;
     target.hash = "";
   } catch { return null; }
-  const response = await fetcher(new URL("/bff/og-image", messageBoardConfig.apiOrigin), {
-    method: "POST", mode: "cors", credentials: "omit", redirect: "error", cache: "no-store",
-    headers: { apikey: messageBoardConfig.publicKey, authorization: `Bearer ${session.token}`, "content-type": "application/json" },
-    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(10_000)]) : AbortSignal.timeout(10_000),
-    body: JSON.stringify({ url: target.href }),
+  const { apiOrigin, projectId, publicKey } = messageBoardConfig;
+  const deadline = Date.now() + previewTimeoutMs;
+  const headers = {
+    apikey: publicKey,
+    authorization: `Bearer ${session.token}`,
+  };
+  const request = async (url, options = {}) => {
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) throw new Error("Link preview unavailable.");
+    const requestSignal = AbortSignal.timeout(Math.min(previewRequestTimeoutMs, remaining));
+    const requestOptions = {
+      mode: "cors", credentials: "omit", redirect: "error", cache: "no-store",
+      ...options,
+      headers: options.method === "POST" ? { ...headers, "content-type": "application/json" } : headers,
+      signal: signal ? AbortSignal.any([signal, requestSignal]) : requestSignal,
+    };
+    return fetcher(url, requestOptions);
+  };
+  const response = await request(new URL("/bff/og-image", apiOrigin), {
+    method: "POST",
+    body: JSON.stringify({ url: target.href, projectId }),
   });
-  if (!response.ok) throw new Error("Link preview unavailable.");
-  const payload = await response.json();
-  if (typeof payload?.image !== "string") return null;
-  try {
-    const image = new URL(payload.image);
-    if (["http:", "https:"].includes(image.protocol) && !image.username && !image.password) return image.href;
-  } catch {}
-  return null;
+  if (response.status !== 200 && response.status !== 202) throw new Error("Link preview unavailable.");
+  let payload = await response.json();
+  if (response.status === 200) {
+    return [undefined, "ready", "failed"].includes(payload?.status) ? validatedImage(payload?.image) : null;
+  }
+
+  const previewId = payload?.previewId;
+  if (payload?.status !== "pending" || typeof previewId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(previewId)) {
+    return null;
+  }
+  // Construct the poll URL from trusted configuration and the validated ID;
+  // never follow a server-provided URL that could redirect credentials.
+  const statusUrl = new URL(
+    `/bff/projects/${encodeURIComponent(projectId)}/previews/${encodeURIComponent(previewId)}`,
+    apiOrigin,
+  );
+  const fallbackImage = payload.source === "favicon" ? validatedImage(payload.image) : null;
+  let retryAfter = Number(response.headers.get("Retry-After"));
+  if (!Number.isFinite(retryAfter) || retryAfter <= 0) retryAfter = 3;
+  let delayMs = Math.min(previewTimeoutMs, Math.max(1000, retryAfter * 1000));
+
+  while (Date.now() < deadline) {
+    await waitForPreview(Math.min(delayMs, deadline - Date.now()), signal);
+    if (Date.now() >= deadline) break;
+    const pollResponse = await request(statusUrl, { method: "GET" });
+    if (pollResponse.status !== 200 && pollResponse.status !== 202) throw new Error("Link preview unavailable.");
+    payload = await pollResponse.json();
+    if (payload?.status === "ready") return validatedImage(payload.image);
+    if (payload?.status === "failed") return validatedImage(payload.image) ?? fallbackImage;
+    if (payload?.status !== "pending") return null;
+    if (payload.previewId !== undefined && payload.previewId !== previewId) return null;
+    const nextRetry = Number(pollResponse.headers.get("Retry-After"));
+    if (Number.isFinite(nextRetry) && nextRetry > 0) {
+      delayMs = Math.min(previewTimeoutMs, Math.max(1000, nextRetry * 1000));
+    }
+  }
+  throw new Error("Link preview unavailable.");
 }
 
 export async function fetchMessages(fetcher = fetch, { boardId, messageId } = {}) {

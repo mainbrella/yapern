@@ -94,8 +94,86 @@ function messageRow(message, board, authors) {
     video.loading = "lazy";
     article.append(video);
   }
+  const boardSlug = board?.slug ?? route?.slug;
+  const actions = document.createElement("div");
+  actions.className = "live-message-actions";
+
+  const votes = document.createElement("div");
+  votes.className = "live-message-votes";
+  votes.setAttribute("role", "group");
+  votes.setAttribute("aria-label", "Voting unavailable");
+  votes.append(actionIcon("arrow-up", "Upvote"));
+  const voteCount = document.createElement("span");
+  voteCount.className = "live-message-vote-count";
+  voteCount.textContent = "1";
+  voteCount.setAttribute("aria-label", "1 vote");
+  votes.append(voteCount, actionIcon("arrow-down", "Downvote"));
+
+  const reply = document.createElement(boardSlug ? "a" : "span");
+  reply.className = boardSlug ? "live-message-action" : "live-message-action live-message-action-static";
+  if (boardSlug) reply.href = `${messageHref(boardSlug, message.message_id ?? message.id)}#message-replies-section`;
+  else reply.setAttribute("aria-label", "Reply unavailable");
+  reply.append(actionIcon("message", ""), document.createTextNode("Reply"));
+
+  const repost = document.createElement("span");
+  repost.className = "live-message-action live-message-action-static";
+  repost.setAttribute("aria-label", "Reposting unavailable");
+  repost.append(actionIcon("repost", ""));
+
+  const share = document.createElement("button");
+  share.className = "live-message-action live-message-share";
+  share.type = "button";
+  share.disabled = !boardSlug;
+  share.setAttribute("aria-label", "Share message");
+  share.append(actionIcon("share", ""), document.createTextNode("Share"));
+  const shareStatus = document.createElement("span");
+  shareStatus.className = "live-message-action-status";
+  shareStatus.setAttribute("role", "status");
+  shareStatus.setAttribute("aria-live", "polite");
+  share.addEventListener("click", async () => {
+    shareStatus.textContent = "";
+    const url = new URL(messageHref(boardSlug, message.message_id ?? message.id), window.location.origin).href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: message.title || "Yapern message", url });
+        return;
+      } catch (error) {
+        if (error?.name === "AbortError") return;
+      }
+    }
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
+      await navigator.clipboard.writeText(url);
+      shareStatus.textContent = "Link copied.";
+    } catch {
+      shareStatus.textContent = "Sharing is unavailable.";
+    }
+  });
+  actions.append(votes, reply, repost, share, shareStatus);
+  article.append(actions);
   item.append(article);
   return item;
+}
+
+function actionIcon(name, label) {
+  const paths = {
+    "arrow-up": '<path d="M12 3 5 10h4v11h6V10h4L12 3Z"/>',
+    "arrow-down": '<path d="m12 21 7-7h-4V3H9v11H5l7 7Z"/>',
+    message: '<path d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5z"/>',
+    repost: '<path d="M20 11a8 8 0 0 0-14-5L4 8m0 0V4m0 4h4M4 13a8 8 0 0 0 14 5l2-2m0 0v4m0-4h-4"/>',
+    share: '<path d="M14 3v5C7 8 3 12 3 21c3-5 7-7 11-7v5l8-8-8-8Z"/>'
+  };
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.classList.add("icon");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  if (label) {
+    icon.setAttribute("role", "img");
+    icon.setAttribute("aria-label", label);
+  } else {
+    icon.setAttribute("aria-hidden", "true");
+  }
+  icon.innerHTML = paths[name];
+  return icon;
 }
 
 async function loadMessages() {

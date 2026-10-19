@@ -1,4 +1,5 @@
-import { fetchMessages, fetchBoards, fetchBoardPage, fetchMessageAuthors } from "./messages-api.js";
+import { fetchMessages, fetchBoards, fetchBoardPage, fetchMessageAuthors, deleteMessage } from "./messages-api.js";
+import { readStoredSession } from "./auth.js";
 import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
 import { mountBoardSidebars } from "./board-sidebars.js";
 import { parseMessageText } from "./message-text.js";
@@ -13,6 +14,11 @@ const heading = document.querySelector("#messages-title");
 const description = document.querySelector("#board-description");
 const isBoardPage = document.body.classList.contains("board-page");
 const route = isBoardPage ? parseBoardRoute(window.location.pathname) : null;
+
+function syncDeleteAction() {
+  const button = list.querySelector(".live-message-delete");
+  if (button) button.hidden = readStoredSession()?.session.user_id !== button.dataset.authorId;
+}
 
 function messageRow(message, board, authors) {
   const item = document.createElement("li");
@@ -151,6 +157,39 @@ function messageRow(message, board, authors) {
   });
   actions.append(votes, reply, repost, share, shareStatus);
   article.append(actions);
+  if (board && route?.messageId === message.id) {
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "live-message-action live-message-delete";
+    remove.textContent = "Delete";
+    remove.dataset.authorId = message.user_id;
+    remove.hidden = true;
+    const error = document.createElement("p");
+    error.className = "create-error live-message-delete-error";
+    error.setAttribute("role", "alert");
+    remove.addEventListener("click", async () => {
+      syncDeleteAction();
+      if (remove.hidden || remove.disabled) return;
+      if (!window.confirm("Delete this message and all its replies? This cannot be undone.")) return;
+      remove.disabled = true;
+      remove.textContent = "Deleting…";
+      remove.setAttribute("aria-busy", "true");
+      error.textContent = "";
+      try {
+        await deleteMessage(message);
+        window.location.replace(boardHref(board.slug));
+      } catch (cause) {
+        error.textContent = cause instanceof Error ? cause.message : "Could not delete this message right now. Please try again.";
+      } finally {
+        remove.disabled = false;
+        remove.textContent = "Delete";
+        remove.setAttribute("aria-busy", "false");
+        syncDeleteAction();
+      }
+    });
+    actions.insertBefore(remove, shareStatus);
+    article.append(error);
+  }
   item.append(article);
   return item;
 }
@@ -205,6 +244,7 @@ async function loadMessages() {
     const authors = await fetchMessageAuthors(data).catch(() => new Map());
     const byId = new Map(boards.map(board => [board.id, board]));
     list.replaceChildren(...data.map(message => messageRow(message, byId.get(message.board_id), authors)));
+    syncDeleteAction();
     status.textContent = data.length ? "" : "No messages yet.";
     if (route?.messageId !== undefined && data.length) {
       mountReplies(data[0].id, (reply, replyAuthors) => messageRow(reply, null, replyAuthors));
@@ -218,6 +258,7 @@ async function loadMessages() {
 }
 
 retry.addEventListener("click", loadMessages);
+for (const event of ["pageshow", "focus", "storage"]) window.addEventListener(event, syncDeleteAction);
 if (route) heading.textContent = `y/${route.slug}`;
 mountBoardSidebars(route?.slug);
 loadMessages();

@@ -80,6 +80,13 @@ Board lists filter by board ID before selecting the latest 20 posts. Individual
 message pages filter by both board and message ID, so older posts remain reachable.
 Missing boards or messages display an inline not-found state.
 
+On individual message pages, signed-in authors can **Delete** their message
+after confirming that the message and its replies will be removed. The browser
+filters the DELETE by message, board, and author, and returns to the sub-yap only
+after the API confirms one deleted row. The browser key needs a `messages` delete
+grant and the table's delete policy must be `own` with `user_id` as its owner
+column; BFF enforces ownership using the authenticated session.
+
 The homepage's Latest messages section and both detail views share the example's
 three-column layout: board navigation on the left, messages in the middle, and
 five recent posts on the right. The current message view or board is highlighted.

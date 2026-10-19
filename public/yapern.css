@@ -1379,6 +1379,9 @@ a.detail-recent-post:hover .detail-recent-title {
 .live-message-action-static {
   cursor: default;
 }
+.live-message-delete { color: #ffb4ab; }
+.live-message-delete:disabled { opacity: .5; cursor: wait; }
+.live-message-delete-error:not(:empty) { margin-top: 8px; }
 .live-message-action-status {
   font-size: 12px;
   color: var(--muted);

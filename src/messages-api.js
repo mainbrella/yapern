@@ -1,5 +1,5 @@
 import { messageBoardConfig } from "./config.js";
-import { readStoredSession } from "./auth.js";
+import { readStoredSession, storeSession } from "./auth.js";
 
 const isMessage = (message) => message &&
   ["id", "board_id", "user_id", "title", "body", "created_at"].every(key => typeof message[key] === "string") &&
@@ -198,6 +198,38 @@ export async function createMessage(boardId, title, body, fetcher = fetch) {
   if (!cleanTitle || cleanTitle.length > 200) throw new Error("Enter a title of 1–200 characters.");
   if (!cleanBody || cleanBody.length > 2000) throw new Error("Enter a message of 1–2000 characters.");
   return insertRow(messageBoardConfig.table, { board_id: boardId, title: cleanTitle, body: cleanBody }, isMessage, fetcher);
+}
+
+export async function deleteMessage(message, fetcher = fetch) {
+  if (!["id", "board_id", "user_id"].every(key => typeof message?.[key] === "string" && message[key].trim())) {
+    throw new Error("Choose a message to delete.");
+  }
+  const session = readStoredSession();
+  if (!session) throw new Error("Your session has expired. Open Account and sign in again to continue.");
+  if (message.user_id !== session.session.user_id) throw new Error("You can only delete your own messages.");
+  const { apiOrigin, projectId, publicKey, table } = messageBoardConfig;
+  const url = new URL(`/bff/data/${encodeURIComponent(projectId)}/tables/${encodeURIComponent(table)}`, apiOrigin);
+  for (const key of ["id", "board_id", "user_id"]) url.searchParams.set(key, `eq.${message[key]}`);
+  let response;
+  try {
+    response = await fetcher(url, {
+      method: "DELETE", mode: "cors", credentials: "omit", redirect: "error", cache: "no-store",
+      signal: AbortSignal.timeout(15_000),
+      headers: { apikey: publicKey, authorization: `Bearer ${session.token}` },
+    });
+  } catch {
+    throw new Error("Could not confirm deletion. Check your connection and reload the page before trying again.");
+  }
+  if (response.status === 401) {
+    storeSession(null);
+    throw new Error("Your session has expired. Open Account and sign in again to continue.");
+  }
+  if (response.status === 403) throw new Error("You don’t have permission to delete this message.");
+  if (!response.ok) throw new Error("Could not delete this message right now. Please try again.");
+  const payload = await response.json().catch(() => null);
+  if (!Array.isArray(payload?.data) || payload.data.length !== 0 || payload?.meta?.changes !== 1) {
+    throw new Error("Could not confirm deletion. Reload the page to check whether the message still exists.");
+  }
 }
 
 export async function createReply(messageId, body, fetcher = fetch) {

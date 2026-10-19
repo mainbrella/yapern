@@ -30,7 +30,7 @@ function messageRow(message, board, authors) {
     const link = document.createElement("a");
     link.className = "live-message-board";
     link.href = boardHref(board.slug);
-    link.textContent = `board/${board.slug}`;
+    link.textContent = `y/${board.slug}`;
     meta.append(link, document.createTextNode(" · "));
   }
   const author = document.createElement("span");
@@ -66,9 +66,9 @@ async function loadMessages() {
       }
       data = result.messages;
       boards = [result.board];
-      heading.textContent = `board/${result.board.slug}`;
+      heading.textContent = `y/${result.board.slug}`;
       description.textContent = route.messageId === undefined ? result.board.description : "";
-      document.title = `${route.messageId === undefined ? `board/${result.board.slug}` : data[0].title} · Yapern`;
+      document.title = `${route.messageId === undefined ? `y/${result.board.slug}` : data[0].title} · Yapern`;
     } else {
       [data, boards] = await Promise.all([fetchMessages(), fetchBoards()]);
     }
@@ -86,6 +86,6 @@ async function loadMessages() {
 }
 
 retry.addEventListener("click", loadMessages);
-if (route) heading.textContent = `board/${route.slug}`;
+if (route) heading.textContent = `y/${route.slug}`;
 if (isBoardPage) mountBoardSidebars(route?.slug);
 loadMessages();

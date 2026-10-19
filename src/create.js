@@ -99,7 +99,7 @@ async function loadBoards() {
     const previous = boardSelect.value;
     boards = result;
     boardSelect.replaceChildren(...(boards.length
-      ? boards.map(board => new Option(`board/${board.slug}`, board.id))
+      ? boards.map(board => new Option(`y/${board.slug}`, board.id))
       : [new Option("No boards available", "")]));
     if (boards.some(board => board.id === previous)) boardSelect.value = previous;
     boardsStatus.textContent = boards.length ? "" : "There are no boards to post to yet. Create a board from the Create menu.";

@@ -25,7 +25,7 @@ export function mountBoardSidebars(activeSlug) {
       const link = document.createElement("a");
       link.className = "detail-nav-link detail-board-link";
       link.href = boardHref(board.slug);
-      link.title = `board/${board.slug}`;
+      link.title = `y/${board.slug}`;
       if (board.slug === activeSlug) link.setAttribute("aria-current", "page");
       const icon = document.createElement("span");
       icon.className = "detail-board-icon";
@@ -33,7 +33,7 @@ export function mountBoardSidebars(activeSlug) {
       icon.textContent = board.slug.charAt(0).toUpperCase();
       const label = document.createElement("span");
       label.className = "detail-board-label";
-      label.textContent = `board/${board.slug}`;
+      label.textContent = `y/${board.slug}`;
       link.append(icon, label);
       item.append(link);
       return item;
@@ -49,7 +49,7 @@ export function mountBoardSidebars(activeSlug) {
       const meta = document.createElement("div");
       meta.className = "detail-recent-meta";
       const boardLabel = document.createElement(board ? "a" : "span");
-      boardLabel.textContent = board ? `board/${board.slug}` : boardsSettled ? "Board unavailable" : "Loading board…";
+      boardLabel.textContent = board ? `y/${board.slug}` : boardsSettled ? "Board unavailable" : "Loading board…";
       if (board) boardLabel.href = boardHref(board.slug);
       const time = document.createElement("time");
       time.dateTime = message.created_at;

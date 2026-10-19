@@ -452,8 +452,34 @@ a {
 .account-email { margin-top: 12px; color: var(--muted); font-size: 14px; }
 .account-login { margin-top: 16px; }
 .site-header > .button[data-login-link] { min-height: 44px; font-size: 14px; }
+.legal-content {
+  max-width: 960px;
+  padding-top: 36px;
+  padding-bottom: 56px;
+  color: #d6dbea;
+  line-height: 1.7;
+}
+.legal-content h1 {
+  color: #f4f5fb;
+  font-size: 32px;
+  line-height: 1.2;
+  letter-spacing: -.025em;
+}
+.legal-content h2 {
+  margin-top: 28px;
+  color: #eef0f8;
+  font-size: 20px;
+  line-height: 1.35;
+}
+.legal-content p { max-width: 72ch; margin-top: 12px; }
+.legal-content p a { color: #c4a9ff; text-decoration: underline; text-underline-offset: 3px; }
+.legal-content p a:hover { color: #e0d2ff; }
+.legal-content .legal-updated { margin-top: 12px; color: var(--muted); font-size: 14px; }
 @media (max-width: 650px) {
   .login-main { padding-top: 24px; }
+  .legal-content { padding-top: 24px; padding-bottom: 36px; }
+  .legal-content h1 { font-size: 30px; }
+  .legal-content h2 { margin-top: 24px; }
 }
 .hero {
   display: grid;
@@ -1336,7 +1362,8 @@ a.detail-recent-post:hover .detail-recent-title {
 }
 .site-footer nav {
   display: flex;
-  gap: 24px;
+  flex-wrap: wrap;
+  gap: 0 24px;
   align-items: center;
 }
 .site-footer nav a {
@@ -1814,6 +1841,7 @@ a.detail-recent-post:hover .detail-recent-title {
     justify-content: space-between;
     margin: 5px 0 0;
     gap: 15px;
+    row-gap: 0;
   }
   .site-footer nav a {
     font-size: 11px;

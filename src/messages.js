@@ -2,6 +2,7 @@ import { fetchMessages, fetchBoards, fetchBoardPage, fetchMessageAuthors } from 
 import { boardHref, messageHref, parseBoardRoute } from "./board-routes.js";
 import { mountBoardSidebars } from "./board-sidebars.js";
 import { parseMessageText } from "./message-text.js";
+import { externalLinkHref } from "./external-links.js";
 import { mountReplies } from "./replies.js";
 
 const list = document.querySelector("#live-messages");
@@ -67,7 +68,7 @@ function messageRow(message, board, authors) {
       }
     } else if (part.href) {
       const link = document.createElement("a");
-      link.href = part.href;
+      link.href = externalLinkHref(part.href, window.location.origin);
       link.textContent = part.text;
       link.target = "_blank";
       link.rel = "noopener noreferrer";

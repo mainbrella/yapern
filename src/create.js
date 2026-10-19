@@ -18,6 +18,12 @@ const boardsStatus = document.querySelector("#create-boards-status");
 const boardsRetry = document.querySelector("#create-boards-retry");
 const title = document.querySelector("#create-title");
 const body = document.querySelector("#create-body");
+const linkToggle = document.querySelector("#create-link-toggle");
+const linkPanel = document.querySelector("#create-link-panel");
+const linkUrl = document.querySelector("#create-link-url");
+const linkRemove = document.querySelector("#create-link-remove");
+const linkError = document.querySelector("#create-link-error");
+const bodyRequirement = document.querySelector("#create-body-requirement");
 const name = document.querySelector("#new-board-name");
 const description = document.querySelector("#new-board-description");
 let boards = [];
@@ -26,6 +32,51 @@ let boardsLoading = false;
 let boardsFailed = false;
 let saving = false;
 let previousOverflow = "";
+let linkTouched = false;
+
+function linkUrlError() {
+  const value = linkUrl.value.trim();
+  if (!value) return "Enter a link URL.";
+  try {
+    const parsed = new URL(value);
+    if ((parsed.protocol === "http:" || parsed.protocol === "https:") && parsed.hostname) return "";
+  } catch {}
+  return "Use a valid HTTP or HTTPS link.";
+}
+
+function serializedMessageBody() {
+  if (linkPanel.hidden) return body.value;
+  const url = linkUrl.value.trim();
+  const text = body.value.trim();
+  return url ? (text ? `${url}\n\n${text}` : url) : text;
+}
+
+function syncLinkValidation() {
+  const error = linkPanel.hidden ? "" : linkUrlError();
+  linkUrl.setCustomValidity(error);
+  linkUrl.setAttribute("aria-invalid", linkTouched && error ? "true" : "false");
+  linkError.textContent = linkTouched ? error : "";
+  return error;
+}
+
+function setLinkPanelOpen(open) {
+  linkPanel.hidden = !open;
+  linkToggle.setAttribute("aria-expanded", String(open));
+  linkUrl.required = open;
+  body.required = !open;
+  bodyRequirement.textContent = open ? "(optional)" : "(required)";
+  if (!open) {
+    linkUrl.value = "";
+    linkTouched = false;
+    syncLinkValidation();
+    updateForms();
+    body.focus();
+    return;
+  }
+  syncLinkValidation();
+  updateForms();
+  linkUrl.focus();
+}
 
 function closeMenu(restoreFocus = false) {
   options.hidden = true;
@@ -73,16 +124,45 @@ syncSession();
 
 function updateForms() {
   const selected = boards.find(board => board.id === boardSelect.value);
+  const serializedBody = serializedMessageBody();
+  const linkInvalid = !linkPanel.hidden && Boolean(syncLinkValidation());
   boardSelect.disabled = saving || boardsLoading || boardsFailed || !boards.length;
+  linkUrl.disabled = saving || linkPanel.hidden;
   messageForm.querySelector("[type=submit]").disabled = saving || boardsLoading || boardsFailed || !selected ||
-    !title.value.trim() || title.value.length > 200 || !body.value.trim() || body.value.length > 2000;
+    !title.value.trim() || title.value.length > 200 || (!linkPanel.hidden && linkInvalid) ||
+    (linkPanel.hidden && !body.value.trim()) || serializedBody.length > 2000;
   boardForm.querySelector("[type=submit]").disabled = saving || !name.value.trim() || name.value.length > 80 || description.value.length > 2000;
-  document.querySelector("#create-body-count").textContent = `${body.value.length}/2000`;
+  const bodyCount = document.querySelector("#create-body-count");
+  const tooLong = serializedBody.length > 2000;
+  bodyCount.textContent = `${serializedBody.length}/2000${tooLong ? " · Shorten the message or link" : ""}`;
+  bodyCount.classList.toggle("is-over-limit", tooLong);
+  body.setAttribute("aria-invalid", String(tooLong));
   document.querySelector("#create-selected-board").hidden = !selected || boardsLoading || boardsFailed;
   document.querySelector("#create-selected-name").textContent = selected?.name ?? "";
   document.querySelector("#create-selected-description").textContent = selected?.description ?? "";
 }
 messageForm.addEventListener("input", updateForms);
+linkToggle.addEventListener("click", () => setLinkPanelOpen(true));
+linkRemove.addEventListener("click", () => setLinkPanelOpen(false));
+linkUrl.addEventListener("input", () => {
+  if (linkTouched) syncLinkValidation();
+});
+linkUrl.addEventListener("blur", () => {
+  linkTouched = true;
+  syncLinkValidation();
+  updateForms();
+});
+messageForm.addEventListener("reset", () => {
+  linkPanel.hidden = true;
+  linkToggle.setAttribute("aria-expanded", "false");
+  linkUrl.required = false;
+  body.required = true;
+  bodyRequirement.textContent = "(required)";
+  linkTouched = false;
+  linkError.textContent = "";
+  linkUrl.setCustomValidity("");
+  linkUrl.setAttribute("aria-invalid", "false");
+});
 boardForm.addEventListener("input", updateForms);
 boardSelect.addEventListener("change", updateForms);
 
@@ -177,7 +257,7 @@ async function submit(event, dialog, action, pendingLabel, defaultLabel) {
 
 messageForm.addEventListener("submit", event => void submit(event, messageDialog, async () => {
   const board = boards.find(row => row.id === boardSelect.value);
-  const message = await createMessage(board.id, title.value, body.value);
+  const message = await createMessage(board.id, title.value, serializedMessageBody());
   return messageHref(board.slug, message.id);
 }, "Posting…", "Post"));
 boardForm.addEventListener("submit", event => void submit(event, boardDialog, async () => {

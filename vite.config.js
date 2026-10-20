@@ -67,7 +67,7 @@ function boardPageRoutes(server) {
 
 function pageRedirects(server) {
   server.middlewares.use((request, response, next) => {
-    const match = request.url?.match(/^\/(privacy|terms|download|login|account|blog|blog\/building-yapern)(\?.*)?$/);
+    const match = request.url?.match(/^\/(privacy|terms|download|login|account|blog|blog\/building-yapern|blog\/turso-vs-layerbase-free-plan-sqlite-systems)(\?.*)?$/);
     if (!match) {
       next();
       return;
@@ -118,6 +118,7 @@ export default defineConfig({
         terms: fileURLToPath(new URL("./terms/index.html", import.meta.url)),
         blog: fileURLToPath(new URL("./blog/index.html", import.meta.url)),
         blogArticle: fileURLToPath(new URL("./blog/building-yapern/index.html", import.meta.url)),
+        blogTursoLayerbase: fileURLToPath(new URL("./blog/turso-vs-layerbase-free-plan-sqlite-systems/index.html", import.meta.url)),
       },
     },
   },
